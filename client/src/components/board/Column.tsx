@@ -9,9 +9,10 @@ import { useState } from 'react';
 
 interface Props {
   columnId: string;
+  isOver?: boolean;
 }
 
-export function Column({ columnId }: Props) {
+export function Column({ columnId, isOver }: Props) {
   const column = useTripStore((s) => s.columns[columnId]);
   const items = useTripStore((s) => s.items);
   const total = useTripStore((s) => selectColumnTotal(s, columnId));
@@ -38,7 +39,7 @@ export function Column({ columnId }: Props) {
   };
 
   return (
-    <div className="flex-shrink-0 w-72 bg-gray-50 rounded-xl border border-gray-200 flex flex-col max-h-full">
+    <div className={`flex-shrink-0 w-72 rounded-xl border flex flex-col max-h-full transition-colors ${isOver ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}>
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between mb-1">
           {editing ? (

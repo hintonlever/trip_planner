@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Plus } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTripStore } from '../../store/useTripStore';
 import { Column } from './Column';
 import { CardRenderer } from '../cards/CardRenderer';
@@ -25,6 +25,8 @@ export function Board() {
   const addColumn = useTripStore((s) => s.addColumn);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
+  const didCrossColumn = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -46,14 +48,20 @@ export function Board() {
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
+    didCrossColumn.current = false;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {
+      setOverColumnId(null);
+      return;
+    }
 
     const activeColId = findColumnForItem(String(active.id));
     const overColId = findColumnForItem(String(over.id));
+
+    setOverColumnId(overColId);
 
     if (!activeColId || !overColId || activeColId === overColId) return;
 
@@ -63,27 +71,27 @@ export function Board() {
     const overIndex = overColumn.itemIds.indexOf(String(over.id));
     const newIndex = overIndex >= 0 ? overIndex : overColumn.itemIds.length;
 
+    didCrossColumn.current = true;
     moveItem(String(active.id), overColId, newIndex);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
+    setOverColumnId(null);
 
-    if (!over) return;
+    if (!over || didCrossColumn.current) return;
 
     const activeColId = findColumnForItem(String(active.id));
     const overColId = findColumnForItem(String(over.id));
 
-    if (!activeColId || !overColId) return;
+    if (!activeColId || !overColId || activeColId !== overColId) return;
 
-    if (activeColId === overColId) {
-      const column = columns[activeColId];
-      const oldIndex = column.itemIds.indexOf(String(active.id));
-      const newIndex = column.itemIds.indexOf(String(over.id));
-      if (oldIndex !== newIndex && oldIndex >= 0 && newIndex >= 0) {
-        moveItem(String(active.id), activeColId, newIndex);
-      }
+    const column = columns[activeColId];
+    const oldIndex = column.itemIds.indexOf(String(active.id));
+    const newIndex = column.itemIds.indexOf(String(over.id));
+    if (oldIndex !== newIndex && oldIndex >= 0 && newIndex >= 0) {
+      moveItem(String(active.id), activeColId, newIndex);
     }
   };
 
@@ -107,7 +115,7 @@ export function Board() {
       <div className="flex-1 overflow-x-auto p-4">
         <div className="flex gap-4 items-start min-h-full">
           {columnOrder.map((colId) => (
-            <Column key={colId} columnId={colId} />
+            <Column key={colId} columnId={colId} isOver={activeId !== null && overColumnId === colId} />
           ))}
 
           <button
