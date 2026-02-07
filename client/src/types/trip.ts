@@ -1,4 +1,5 @@
-export type CostItemType = 'flight' | 'hotel' | 'food';
+export type CostItemType = 'flight' | 'hotel' | 'food' | 'other';
+export type OtherCostMode = 'per-day' | 'total';
 export type FoodTier = 'budget' | 'mid-range' | 'luxury';
 
 interface CostItemBase {
@@ -49,7 +50,15 @@ export interface FoodCostItem extends CostItemBase {
   numberOfPeople: number;
 }
 
-export type CostItem = FlightCostItem | HotelCostItem | FoodCostItem;
+export interface OtherCostItem extends CostItemBase {
+  type: 'other';
+  label: string;
+  mode: OtherCostMode;
+  dailyCost: number;
+  numberOfDays: number;
+}
+
+export type CostItem = FlightCostItem | HotelCostItem | FoodCostItem | OtherCostItem;
 
 export interface DestinationColumn {
   id: string;

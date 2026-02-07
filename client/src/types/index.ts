@@ -1,9 +1,11 @@
 export type {
   CostItemType,
   FoodTier,
+  OtherCostMode,
   FlightCostItem,
   HotelCostItem,
   FoodCostItem,
+  OtherCostItem,
   CostItem,
   DestinationColumn,
 } from './trip';

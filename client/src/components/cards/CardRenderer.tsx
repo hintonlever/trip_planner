@@ -2,6 +2,7 @@ import type { CostItem } from '../../types';
 import { FlightCard } from './FlightCard';
 import { HotelCard } from './HotelCard';
 import { FoodCard } from './FoodCard';
+import { OtherCostCard } from './OtherCostCard';
 import { useTripStore } from '../../store/useTripStore';
 
 interface Props {
@@ -25,5 +26,7 @@ export function CardRenderer({ item, onEdit }: Props) {
       return <HotelCard item={item} onEdit={onEdit} onDelete={handleDelete} />;
     case 'food':
       return <FoodCard item={item} onEdit={onEdit} onDelete={handleDelete} />;
+    case 'other':
+      return <OtherCostCard item={item} onEdit={onEdit} onDelete={handleDelete} />;
   }
 }

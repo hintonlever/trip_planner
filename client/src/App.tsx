@@ -3,6 +3,7 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { Board } from './components/board/Board';
 import { ComparisonBar } from './components/comparison/ComparisonBar';
+import { TripMap } from './components/map/TripMap';
 import { useTripStore } from './store/useTripStore';
 import { loadFromStorage, saveToStorage } from './services/persistenceService';
 
@@ -37,6 +38,7 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       <Header />
+      <TripMap />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <Board />

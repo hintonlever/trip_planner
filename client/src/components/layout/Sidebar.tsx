@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { Plane, Building2, UtensilsCrossed, ChevronDown } from 'lucide-react';
+import { Plane, Building2, UtensilsCrossed, Ticket, ChevronDown } from 'lucide-react';
 import { FlightSearchForm } from '../forms/FlightSearchForm';
 import { HotelForm } from '../forms/HotelForm';
 import { FoodEstimateForm } from '../forms/FoodEstimateForm';
+import { OtherCostForm } from '../forms/OtherCostForm';
 
-type Section = 'flights' | 'hotels' | 'food';
+type Section = 'flights' | 'hotels' | 'food' | 'other';
 
 const sections: { key: Section; label: string; icon: typeof Plane; color: string }[] = [
   { key: 'flights', label: 'Flights', icon: Plane, color: 'text-blue-600' },
   { key: 'hotels', label: 'Hotels', icon: Building2, color: 'text-emerald-600' },
   { key: 'food', label: 'Food', icon: UtensilsCrossed, color: 'text-amber-600' },
+  { key: 'other', label: 'Other Costs', icon: Ticket, color: 'text-violet-600' },
 ];
 
 export function Sidebar() {
@@ -36,6 +38,7 @@ export function Sidebar() {
                   {key === 'flights' && <FlightSearchForm />}
                   {key === 'hotels' && <HotelForm />}
                   {key === 'food' && <FoodEstimateForm />}
+                  {key === 'other' && <OtherCostForm />}
                 </div>
               </div>
             )}
