@@ -14,7 +14,7 @@ flightsRouter.use(limiter);
 
 flightsRouter.get('/search', async (req, res) => {
   try {
-    const { origin, destination, departureDate, adults, nonStop, currency } = req.query;
+    const { origin, destination, departureDate, adults, nonStop, currency, returnDate } = req.query;
 
     if (!origin || !destination || !departureDate || !adults) {
       res.status(400).json({ error: 'Missing required params: origin, destination, departureDate, adults' });
@@ -28,6 +28,7 @@ flightsRouter.get('/search', async (req, res) => {
       adults: Number(adults),
       nonStop: nonStop === 'true',
       currency: currency ? String(currency) : undefined,
+      returnDate: returnDate ? String(returnDate) : undefined,
     });
 
     res.json({ results });

@@ -5,6 +5,7 @@ export interface FlightSearchParams {
   adults: number;
   nonStop?: boolean;
   currency?: string;
+  returnDate?: string;
 }
 
 export interface FlightSearchResult {
@@ -22,4 +23,11 @@ export interface FlightSearchResult {
   pricePerPerson: number;
   currency: string;
   cabin: string;
+  returnDepartureAt?: string;
+  returnArrivalAt?: string;
+  returnDuration?: string;
+  returnStops?: number;
+  returnFlightNumber?: string;
+  returnOrigin?: string;
+  returnDestination?: string;
 }

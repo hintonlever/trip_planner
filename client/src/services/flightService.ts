@@ -12,6 +12,7 @@ export async function searchFlights(
 
   if (params.nonStop) query.set('nonStop', 'true');
   if (params.currency) query.set('currency', params.currency);
+  if (params.returnDate) query.set('returnDate', params.returnDate);
 
   const response = await fetch(`/api/flights/search?${query}`);
 

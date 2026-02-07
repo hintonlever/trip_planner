@@ -6,9 +6,11 @@ import { useTripStore } from '../../store/useTripStore';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 export function FlightSearchForm() {
+  const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>('oneway');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
   const [adults, setAdults] = useState(1);
   const [nonStop, setNonStop] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,7 @@ export function FlightSearchForm() {
         departureDate: date,
         adults,
         nonStop,
+        returnDate: tripType === 'roundtrip' ? returnDate : undefined,
       });
       setResults(data);
       if (data.length === 0) setError('No flights found for this route/date.');
@@ -59,12 +62,45 @@ export function FlightSearchForm() {
       cabin: result.cabin,
       totalCost: result.totalPrice,
       currency: result.currency,
+      ...(result.returnDepartureAt && {
+        returnDate: result.returnDepartureAt.split('T')[0],
+        returnDepartureTime: result.returnDepartureAt,
+        returnArrivalTime: result.returnArrivalAt,
+        returnDuration: result.returnDuration,
+        returnStops: result.returnStops,
+        returnFlightNumber: result.returnFlightNumber,
+      }),
     });
   };
 
   return (
     <div>
       <form onSubmit={handleSearch} className="space-y-3">
+        <div className="flex rounded-md overflow-hidden border border-gray-300 text-sm">
+          <button
+            type="button"
+            onClick={() => setTripType('oneway')}
+            className={`flex-1 py-1.5 font-medium transition-colors ${
+              tripType === 'oneway'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            One-way
+          </button>
+          <button
+            type="button"
+            onClick={() => setTripType('roundtrip')}
+            className={`flex-1 py-1.5 font-medium transition-colors ${
+              tripType === 'roundtrip'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Round-trip
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
@@ -90,15 +126,32 @@ export function FlightSearchForm() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-          />
+        <div className={tripType === 'roundtrip' ? 'grid grid-cols-2 gap-2' : ''}>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              {tripType === 'roundtrip' ? 'Departure' : 'Date'}
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+              className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+          {tripType === 'roundtrip' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Return</label>
+              <input
+                type="date"
+                value={returnDate}
+                onChange={(e) => setReturnDate(e.target.value)}
+                min={date}
+                required
+                className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 items-end">
@@ -152,6 +205,11 @@ export function FlightSearchForm() {
               <p className="text-xs text-gray-500">
                 {r.origin} → {r.destination} &middot; {r.stops === 0 ? 'Direct' : `${r.stops} stop${r.stops > 1 ? 's' : ''}`}
               </p>
+              {r.returnOrigin && (
+                <p className="text-xs text-gray-500">
+                  {r.returnOrigin} → {r.returnDestination} &middot; {r.returnStops === 0 ? 'Direct' : `${r.returnStops} stop${(r.returnStops ?? 0) > 1 ? 's' : ''}`}
+                </p>
+              )}
 
               {columnOrder.length > 0 ? (
                 <div className="flex gap-1 mt-2 flex-wrap">

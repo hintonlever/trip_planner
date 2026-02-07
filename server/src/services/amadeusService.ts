@@ -40,6 +40,7 @@ export interface FlightSearchParams {
   adults: number;
   nonStop?: boolean;
   currency?: string;
+  returnDate?: string;
 }
 
 export interface FlightSearchResult {
@@ -57,6 +58,13 @@ export interface FlightSearchResult {
   pricePerPerson: number;
   currency: string;
   cabin: string;
+  returnDepartureAt?: string;
+  returnArrivalAt?: string;
+  returnDuration?: string;
+  returnStops?: number;
+  returnFlightNumber?: string;
+  returnOrigin?: string;
+  returnDestination?: string;
 }
 
 export async function searchFlights(params: FlightSearchParams): Promise<FlightSearchResult[]> {
@@ -70,6 +78,10 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightS
     currencyCode: params.currency || 'USD',
     max: '20',
   });
+
+  if (params.returnDate) {
+    query.set('returnDate', params.returnDate);
+  }
 
   if (params.nonStop) {
     query.set('nonStop', 'true');
@@ -115,7 +127,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightS
     const lastSegment = itinerary.segments[itinerary.segments.length - 1];
     const cabin = offer.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.cabin || 'ECONOMY';
 
-    return {
+    const result: FlightSearchResult = {
       id: offer.id,
       airlineCode: firstSegment.carrierCode,
       airlineName: carriers[firstSegment.carrierCode] || firstSegment.carrierCode,
@@ -131,5 +143,20 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightS
       currency: offer.price.currency,
       cabin,
     };
+
+    const returnItinerary = offer.itineraries[1];
+    if (returnItinerary) {
+      const retFirst = returnItinerary.segments[0];
+      const retLast = returnItinerary.segments[returnItinerary.segments.length - 1];
+      result.returnOrigin = retFirst.departure.iataCode;
+      result.returnDestination = retLast.arrival.iataCode;
+      result.returnDepartureAt = retFirst.departure.at;
+      result.returnArrivalAt = retLast.arrival.at;
+      result.returnDuration = returnItinerary.duration;
+      result.returnStops = returnItinerary.segments.length - 1;
+      result.returnFlightNumber = `${retFirst.carrierCode} ${retFirst.number}`;
+    }
+
+    return result;
   });
 }
