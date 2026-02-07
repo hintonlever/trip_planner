@@ -22,6 +22,7 @@ export interface FlightCostItem extends CostItemBase {
   flightNumber: string;
   duration: string;
   stops: number;
+  stopCodes?: string[];
   pricePerPerson: number;
   passengers: number;
   cabin: string;
@@ -31,6 +32,7 @@ export interface FlightCostItem extends CostItemBase {
   returnDuration?: string;
   returnStops?: number;
   returnFlightNumber?: string;
+  returnStopCodes?: string[];
 }
 
 export interface HotelCostItem extends CostItemBase {

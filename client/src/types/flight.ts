@@ -19,6 +19,7 @@ export interface FlightSearchResult {
   arrivalAt: string;
   duration: string;
   stops: number;
+  stopCodes: string[];
   totalPrice: number;
   pricePerPerson: number;
   currency: string;
@@ -30,4 +31,5 @@ export interface FlightSearchResult {
   returnFlightNumber?: string;
   returnOrigin?: string;
   returnDestination?: string;
+  returnStopCodes?: string[];
 }

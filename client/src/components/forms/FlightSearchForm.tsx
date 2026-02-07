@@ -57,6 +57,7 @@ export function FlightSearchForm() {
       flightNumber: result.flightNumber,
       duration: result.duration,
       stops: result.stops,
+      stopCodes: result.stopCodes,
       pricePerPerson: result.pricePerPerson,
       passengers: adults,
       cabin: result.cabin,
@@ -69,6 +70,7 @@ export function FlightSearchForm() {
         returnDuration: result.returnDuration,
         returnStops: result.returnStops,
         returnFlightNumber: result.returnFlightNumber,
+        returnStopCodes: result.returnStopCodes,
       }),
     });
   };
@@ -203,11 +205,11 @@ export function FlightSearchForm() {
                 <span className="font-bold text-sm text-blue-700">{formatCurrency(r.totalPrice)}</span>
               </div>
               <p className="text-xs text-gray-500">
-                {r.origin} → {r.destination} &middot; {r.stops === 0 ? 'Direct' : `${r.stops} stop${r.stops > 1 ? 's' : ''}`}
+                {[r.origin, ...(r.stopCodes ?? []), r.destination].join(' → ')} &middot; {r.stops === 0 ? 'Direct' : `${r.stops} stop${r.stops > 1 ? 's' : ''}`}
               </p>
               {r.returnOrigin && (
                 <p className="text-xs text-gray-500">
-                  {r.returnOrigin} → {r.returnDestination} &middot; {r.returnStops === 0 ? 'Direct' : `${r.returnStops} stop${(r.returnStops ?? 0) > 1 ? 's' : ''}`}
+                  {[r.returnOrigin, ...(r.returnStopCodes ?? []), r.returnDestination].join(' → ')} &middot; {r.returnStops === 0 ? 'Direct' : `${r.returnStops} stop${(r.returnStops ?? 0) > 1 ? 's' : ''}`}
                 </p>
               )}
 

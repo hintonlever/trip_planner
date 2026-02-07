@@ -18,11 +18,17 @@ const COLUMN_COLORS = [
   '#F97316', // orange
 ];
 
+interface AirportPoint {
+  code: string;
+  lat: number;
+  lng: number;
+  city: string;
+  isTransit?: boolean;
+}
+
 interface FlightRoute {
-  originCode: string;
-  destCode: string;
-  origin: { lat: number; lng: number; city: string };
-  destination: { lat: number; lng: number; city: string };
+  /** All airports in order: origin, stops, destination */
+  waypoints: AirportPoint[];
 }
 
 interface RouteGroup {
@@ -81,15 +87,22 @@ export function TripMap() {
         const item = items[itemId];
         if (!item || item.type !== 'flight') continue;
         const flight = item as FlightCostItem;
-        const orig = airports[flight.origin.toUpperCase()];
-        const dest = airports[flight.destination.toUpperCase()];
-        if (!orig || !dest) continue;
-        routes.push({
-          originCode: flight.origin.toUpperCase(),
-          destCode: flight.destination.toUpperCase(),
-          origin: orig,
-          destination: dest,
-        });
+        const codes = [flight.origin, ...(flight.stopCodes ?? []), flight.destination];
+        const waypoints: AirportPoint[] = [];
+        for (let i = 0; i < codes.length; i++) {
+          const apt = airports[codes[i].toUpperCase()];
+          if (!apt) continue;
+          waypoints.push({
+            code: codes[i].toUpperCase(),
+            lat: apt.lat,
+            lng: apt.lng,
+            city: apt.city,
+            isTransit: i > 0 && i < codes.length - 1,
+          });
+        }
+        if (waypoints.length >= 2) {
+          routes.push({ waypoints });
+        }
       }
 
       if (routes.length > 0) {
@@ -100,20 +113,13 @@ export function TripMap() {
   }, [columnOrder, columns, items]);
 
   const uniqueAirports = useMemo(() => {
-    const map = new Map<string, { code: string; lat: number; lng: number; city: string }>();
+    const map = new Map<string, AirportPoint>();
     for (const group of routeGroups) {
       for (const route of group.routes) {
-        if (!map.has(route.originCode)) {
-          map.set(route.originCode, {
-            code: route.originCode,
-            ...route.origin,
-          });
-        }
-        if (!map.has(route.destCode)) {
-          map.set(route.destCode, {
-            code: route.destCode,
-            ...route.destination,
-          });
+        for (const wp of route.waypoints) {
+          if (!map.has(wp.code)) {
+            map.set(wp.code, wp);
+          }
         }
       }
     }
@@ -144,27 +150,30 @@ export function TripMap() {
           <FitBounds points={uniqueAirports} />
           <InvalidateSize collapsed={collapsed} />
 
-          {/* Flight route arcs */}
+          {/* Flight route arcs — one arc per segment */}
           {routeGroups.map((group) => {
             const color = COLUMN_COLORS[group.colIndex % COLUMN_COLORS.length];
-            return group.routes.map((route, i) => {
-              const arc = computeBezierArc(
-                [route.origin.lat, route.origin.lng],
-                [route.destination.lat, route.destination.lng],
-              );
-              return (
-                <Polyline
-                  key={`${group.colId}-${route.originCode}-${route.destCode}-${i}`}
-                  positions={arc}
-                  pathOptions={{
-                    color,
-                    weight: 2.5,
-                    opacity: 0.8,
-                    dashArray: '8 4',
-                  }}
-                />
-              );
-            });
+            return group.routes.map((route, ri) =>
+              route.waypoints.slice(0, -1).map((wp, si) => {
+                const next = route.waypoints[si + 1];
+                const arc = computeBezierArc(
+                  [wp.lat, wp.lng],
+                  [next.lat, next.lng],
+                );
+                return (
+                  <Polyline
+                    key={`${group.colId}-${ri}-${wp.code}-${next.code}`}
+                    positions={arc}
+                    pathOptions={{
+                      color,
+                      weight: 2.5,
+                      opacity: 0.8,
+                      dashArray: '8 4',
+                    }}
+                  />
+                );
+              }),
+            );
           })}
 
           {/* Airport markers */}
@@ -172,8 +181,13 @@ export function TripMap() {
             <CircleMarker
               key={apt.code}
               center={[apt.lat, apt.lng]}
-              radius={5}
-              pathOptions={{
+              radius={apt.isTransit ? 3.5 : 5}
+              pathOptions={apt.isTransit ? {
+                color: '#C2410C',
+                fillColor: '#F97316',
+                fillOpacity: 1,
+                weight: 1.5,
+              } : {
                 color: '#1E40AF',
                 fillColor: '#3B82F6',
                 fillOpacity: 1,
@@ -182,6 +196,7 @@ export function TripMap() {
             >
               <Tooltip direction="top" offset={[0, -6]}>
                 <span style={{ fontWeight: 600 }}>{apt.code}</span> — {apt.city}
+                {apt.isTransit && <span style={{ color: '#C2410C' }}> (transit)</span>}
               </Tooltip>
             </CircleMarker>
           ))}

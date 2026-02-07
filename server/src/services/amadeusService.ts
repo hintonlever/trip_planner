@@ -54,6 +54,7 @@ export interface FlightSearchResult {
   arrivalAt: string;
   duration: string;
   stops: number;
+  stopCodes: string[];
   totalPrice: number;
   pricePerPerson: number;
   currency: string;
@@ -65,6 +66,7 @@ export interface FlightSearchResult {
   returnFlightNumber?: string;
   returnOrigin?: string;
   returnDestination?: string;
+  returnStopCodes?: string[];
 }
 
 export async function searchFlights(params: FlightSearchParams): Promise<FlightSearchResult[]> {
@@ -138,6 +140,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightS
       arrivalAt: lastSegment.arrival.at,
       duration: itinerary.duration,
       stops: itinerary.segments.length - 1,
+      stopCodes: itinerary.segments.slice(0, -1).map((s) => s.arrival.iataCode),
       totalPrice: parseFloat(offer.price.grandTotal),
       pricePerPerson: parseFloat(offer.price.grandTotal) / params.adults,
       currency: offer.price.currency,
@@ -155,6 +158,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightS
       result.returnDuration = returnItinerary.duration;
       result.returnStops = returnItinerary.segments.length - 1;
       result.returnFlightNumber = `${retFirst.carrierCode} ${retFirst.number}`;
+      result.returnStopCodes = returnItinerary.segments.slice(0, -1).map((s) => s.arrival.iataCode);
     }
 
     return result;

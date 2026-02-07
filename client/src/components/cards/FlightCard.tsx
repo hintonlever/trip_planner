@@ -43,8 +43,14 @@ export function FlightCard({ item, onEdit, onDelete }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
         <span className="font-bold text-sm">{item.origin}</span>
+        {item.stopCodes?.map((code) => (
+          <span key={code} className="contents">
+            <span className="text-gray-400 text-xs">→</span>
+            <span className="text-xs text-orange-500 font-medium">{code}</span>
+          </span>
+        ))}
         <span className="text-gray-400 text-xs">→</span>
         <span className="font-bold text-sm">{item.destination}</span>
       </div>
