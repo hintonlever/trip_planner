@@ -18,3 +18,8 @@ export type {
 export type {
   CityFoodCosts,
 } from './food';
+
+export type {
+  MonthlyClimate,
+  CityClimate,
+} from './weather';

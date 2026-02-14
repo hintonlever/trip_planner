@@ -1,11 +1,13 @@
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Trash2 } from 'lucide-react';
+import { Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { useTripStore, selectColumnTotal } from '../../store/useTripStore';
 import { SortableCard } from './SortableCard';
 import { CardRenderer } from '../cards/CardRenderer';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useState } from 'react';
+import { useCardExpansion } from './CardExpansionContext';
+import { WeatherInfo } from '../weather/WeatherInfo';
 
 interface Props {
   columnId: string;
@@ -20,6 +22,7 @@ export function Column({ columnId, isOver }: Props) {
   const removeColumn = useTripStore((s) => s.removeColumn);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(column?.name ?? '');
+  const { expandAll, collapseAll, allCollapsed } = useCardExpansion();
 
   const { setNodeRef } = useDroppable({ id: columnId });
 
@@ -35,6 +38,15 @@ export function Column({ columnId, isOver }: Props) {
   const handleDelete = () => {
     if (confirm(`Delete "${column.name}" and all its items?`)) {
       removeColumn(columnId);
+    }
+  };
+
+  const handleToggleAll = () => {
+    if (allCollapsed) {
+      const allIds = Object.keys(items);
+      expandAll(allIds);
+    } else {
+      collapseAll();
     }
   };
 
@@ -59,19 +71,36 @@ export function Column({ columnId, isOver }: Props) {
               {column.name}
             </h3>
           )}
-          <button
-            onClick={handleDelete}
-            className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500 flex-shrink-0"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            {column.itemIds.length > 0 && (
+              <button
+                onClick={handleToggleAll}
+                className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600"
+                title={allCollapsed ? 'Expand all' : 'Collapse all'}
+              >
+                {allCollapsed ? (
+                  <ChevronsUpDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronsDownUp className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+            <button
+              onClick={handleDelete}
+              className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         <p className="text-lg font-bold text-gray-900">{formatCurrency(total)}</p>
       </div>
 
+      <WeatherInfo columnId={columnId} />
+
       <div ref={setNodeRef} className="p-2 flex-1 overflow-y-auto min-h-[120px]">
         <SortableContext items={column.itemIds} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {column.itemIds.map((itemId) => {
               const item = items[itemId];
               if (!item) return null;
