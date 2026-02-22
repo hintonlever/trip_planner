@@ -1,3 +1,5 @@
+import { getCachedResults, cacheResults } from './cacheService.js';
+
 let cachedToken: string | null = null;
 let tokenExpiry = 0;
 
@@ -69,7 +71,22 @@ export interface FlightSearchResult {
   returnStopCodes?: string[];
 }
 
-export async function searchFlights(params: FlightSearchParams): Promise<FlightSearchResult[]> {
+export async function searchFlightsWithCache(params: FlightSearchParams, fresh = false): Promise<FlightSearchResult[]> {
+  if (!fresh) {
+    const cached = getCachedResults(params);
+    if (cached) {
+      console.log(`Cache hit for ${params.origin} -> ${params.destination}`);
+      return cached;
+    }
+  }
+
+  const results = await searchFlights(params);
+  cacheResults(params, results);
+  console.log(`Cached ${results.length} results for ${params.origin} -> ${params.destination}`);
+  return results;
+}
+
+async function searchFlights(params: FlightSearchParams): Promise<FlightSearchResult[]> {
   const token = await getAccessToken();
 
   const query = new URLSearchParams({

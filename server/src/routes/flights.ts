@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { searchFlights } from '../services/amadeusService.js';
+import { searchFlightsWithCache } from '../services/amadeusService.js';
 
 export const flightsRouter = Router();
 
@@ -14,14 +14,14 @@ flightsRouter.use(limiter);
 
 flightsRouter.get('/search', async (req, res) => {
   try {
-    const { origin, destination, departureDate, adults, nonStop, currency, returnDate } = req.query;
+    const { origin, destination, departureDate, adults, nonStop, currency, returnDate, fresh } = req.query;
 
     if (!origin || !destination || !departureDate || !adults) {
       res.status(400).json({ error: 'Missing required params: origin, destination, departureDate, adults' });
       return;
     }
 
-    const results = await searchFlights({
+    const results = await searchFlightsWithCache({
       origin: String(origin),
       destination: String(destination),
       departureDate: String(departureDate),
@@ -29,7 +29,7 @@ flightsRouter.get('/search', async (req, res) => {
       nonStop: nonStop === 'true',
       currency: currency ? String(currency) : undefined,
       returnDate: returnDate ? String(returnDate) : undefined,
-    });
+    }, fresh === 'true');
 
     res.json({ results });
   } catch (err) {
