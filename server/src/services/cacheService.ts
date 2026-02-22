@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import type { FlightSearchParams, FlightSearchResult } from './flightService.js';
+import type { FlightSearchParams, FlightSearchResult, FlightSegment } from './flightService.js';
 
 const dbPath = path.join(__dirname, '..', '..', 'cache.db');
 const db = new Database(dbPath);
@@ -47,9 +47,15 @@ db.exec(`
     return_flight_number TEXT,
     return_origin TEXT,
     return_destination TEXT,
-    return_stop_codes TEXT
+    return_stop_codes TEXT,
+    segments_json TEXT,
+    return_segments_json TEXT
   );
 `);
+
+// Migration for existing databases: add segments columns if missing
+try { db.exec('ALTER TABLE results ADD COLUMN segments_json TEXT'); } catch { /* column already exists */ }
+try { db.exec('ALTER TABLE results ADD COLUMN return_segments_json TEXT'); } catch { /* column already exists */ }
 
 function buildCacheKey(params: FlightSearchParams): string {
   return [
@@ -86,6 +92,7 @@ function mapRowToResult(row: Record<string, unknown>): FlightSearchResult {
     duration: row.duration as string,
     stops: row.stops as number,
     stopCodes: JSON.parse(row.stop_codes as string) as string[],
+    segments: row.segments_json ? JSON.parse(row.segments_json as string) as FlightSegment[] : [],
     totalPrice: row.total_price as number,
     pricePerPerson: row.price_per_person as number,
     currency: row.currency as string,
@@ -101,6 +108,7 @@ function mapRowToResult(row: Record<string, unknown>): FlightSearchResult {
     result.returnOrigin = row.return_origin as string;
     result.returnDestination = row.return_destination as string;
     result.returnStopCodes = JSON.parse(row.return_stop_codes as string) as string[];
+    result.returnSegments = row.return_segments_json ? JSON.parse(row.return_segments_json as string) as FlightSegment[] : undefined;
   }
 
   return result;
@@ -164,8 +172,9 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
       origin, destination, departure_at, arrival_at, duration,
       stops, stop_codes, total_price, price_per_person, currency, cabin,
       return_departure_at, return_arrival_at, return_duration, return_stops,
-      return_flight_number, return_origin, return_destination, return_stop_codes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      return_flight_number, return_origin, return_destination, return_stop_codes,
+      segments_json, return_segments_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const r of results) {
@@ -194,6 +203,8 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
       r.returnOrigin || null,
       r.returnDestination || null,
       r.returnStopCodes ? JSON.stringify(r.returnStopCodes) : null,
+      JSON.stringify(r.segments),
+      r.returnSegments ? JSON.stringify(r.returnSegments) : null,
     );
   }
 });

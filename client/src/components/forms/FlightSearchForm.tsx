@@ -12,6 +12,7 @@ export function FlightSearchForm() {
   const [date, setDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [adults, setAdults] = useState(1);
+  const [currency, setCurrency] = useState('AUD');
   const [nonStop, setNonStop] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,6 +34,7 @@ export function FlightSearchForm() {
         departureDate: date,
         adults,
         nonStop,
+        currency,
         returnDate: tripType === 'roundtrip' ? returnDate : undefined,
       });
       setResults(data);
@@ -166,6 +168,16 @@ export function FlightSearchForm() {
               min={1}
               max={9}
               className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Currency</label>
+            <input
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+              placeholder="AUD"
+              maxLength={3}
+              className="w-16 border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
           </div>
           <label className="flex items-center gap-1.5 pb-1.5 text-xs text-gray-600 cursor-pointer">

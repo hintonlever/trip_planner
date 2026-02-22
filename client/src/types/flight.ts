@@ -21,6 +21,17 @@ export interface CachedQuery {
   result_count: number;
 }
 
+export interface FlightSegment {
+  flightNumber: string;
+  airlineCode: string;
+  airlineName: string;
+  origin: string;
+  destination: string;
+  departureAt: string;
+  arrivalAt: string;
+  duration: string;
+}
+
 export interface FlightSearchResult {
   id: string;
   airlineCode: string;
@@ -33,6 +44,7 @@ export interface FlightSearchResult {
   duration: string;
   stops: number;
   stopCodes: string[];
+  segments: FlightSegment[];
   totalPrice: number;
   pricePerPerson: number;
   currency: string;
@@ -45,4 +57,5 @@ export interface FlightSearchResult {
   returnOrigin?: string;
   returnDestination?: string;
   returnStopCodes?: string[];
+  returnSegments?: FlightSegment[];
 }

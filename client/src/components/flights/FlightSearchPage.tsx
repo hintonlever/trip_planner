@@ -131,6 +131,17 @@ export function FlightSearchPage() {
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Currency</label>
+            <input
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+              placeholder="AUD"
+              maxLength={3}
+              className="w-16 border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+
           <label className="flex items-center gap-1.5 pb-1.5 text-xs text-gray-600 cursor-pointer">
             <input
               type="checkbox"
