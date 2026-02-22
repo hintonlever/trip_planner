@@ -52,8 +52,10 @@ export interface FlightSearchResult {
 // FlightAPI.io response types
 interface FlightApiPlace {
   id: number;
-  iata: string;
+  alt_id: string;
+  display_code: string;
   name: string;
+  type: string;
 }
 
 interface FlightApiCarrier {
@@ -157,25 +159,37 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
 
   const body = await response.json() as FlightApiResponse;
 
-  // Build lookup maps from denormalized response
-  const placesMap = new Map<number, FlightApiPlace>();
+  // Debug: log top-level keys and array sizes
+  console.log('FlightAPI response keys:', Object.keys(body));
+  console.log('Counts:', {
+    itineraries: body.itineraries?.length,
+    legs: body.legs?.length,
+    segments: body.segments?.length,
+    places: body.places?.length,
+    carriers: body.carriers?.length,
+  });
+  if (body.places?.length > 0) console.log('Sample place:', JSON.stringify(body.places[0]));
+  if (body.segments?.length > 0) console.log('Sample segment:', JSON.stringify(body.segments[0]));
+
+  // Build lookup maps - use string keys for safety (API may mix string/number IDs)
+  const placesMap = new Map<string, FlightApiPlace>();
   for (const p of body.places ?? []) {
-    placesMap.set(p.id, p);
+    placesMap.set(String(p.id), p);
   }
 
-  const carriersMap = new Map<number, FlightApiCarrier>();
+  const carriersMap = new Map<string, FlightApiCarrier>();
   for (const c of body.carriers ?? []) {
-    carriersMap.set(c.id, c);
+    carriersMap.set(String(c.id), c);
   }
 
   const legsMap = new Map<string, FlightApiLeg>();
   for (const l of body.legs ?? []) {
-    legsMap.set(l.id, l);
+    legsMap.set(String(l.id), l);
   }
 
   const segmentsMap = new Map<string, FlightApiSegment>();
   for (const s of body.segments ?? []) {
-    segmentsMap.set(s.id, s);
+    segmentsMap.set(String(s.id), s);
   }
 
   let itineraries = body.itineraries ?? [];
@@ -183,7 +197,7 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
   // Filter non-stop if requested
   if (params.nonStop) {
     itineraries = itineraries.filter((it) => {
-      const outboundLeg = legsMap.get(it.leg_ids[0]);
+      const outboundLeg = legsMap.get(String(it.leg_ids[0]));
       return outboundLeg && outboundLeg.stop_count === 0;
     });
   }
@@ -193,16 +207,16 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
 
   function resolveSegments(leg: FlightApiLeg): FlightSegment[] {
     return leg.segment_ids.map((segId) => {
-      const seg = segmentsMap.get(segId)!;
-      const segCarrier = carriersMap.get(seg.marketing_carrier_id);
-      const segOrigin = placesMap.get(seg.origin_place_id);
-      const segDest = placesMap.get(seg.destination_place_id);
+      const seg = segmentsMap.get(String(segId))!;
+      const segCarrier = carriersMap.get(String(seg.marketing_carrier_id));
+      const segOrigin = placesMap.get(String(seg.origin_place_id));
+      const segDest = placesMap.get(String(seg.destination_place_id));
       return {
         flightNumber: `${segCarrier?.alt_id || ''} ${seg.marketing_flight_number}`.trim(),
         airlineCode: segCarrier?.alt_id || String(seg.marketing_carrier_id),
         airlineName: segCarrier?.name || segCarrier?.alt_id || String(seg.marketing_carrier_id),
-        origin: segOrigin?.iata || '???',
-        destination: segDest?.iata || '???',
+        origin: segOrigin?.display_code || '???',
+        destination: segDest?.display_code || '???',
         departureAt: seg.departure,
         arrivalAt: seg.arrival,
         duration: minutesToIsoDuration(seg.duration),
@@ -215,8 +229,8 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
     if (leg.stop_ids) {
       for (const group of leg.stop_ids) {
         for (const stopId of group) {
-          const place = placesMap.get(stopId);
-          if (place?.iata) codes.push(place.iata);
+          const place = placesMap.get(String(stopId));
+          if (place?.display_code) codes.push(place.display_code);
         }
       }
     }
@@ -224,11 +238,11 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
   }
 
   return itineraries.map((it, index) => {
-    const outboundLeg = legsMap.get(it.leg_ids[0])!;
+    const outboundLeg = legsMap.get(String(it.leg_ids[0]))!;
     const outboundSegments = resolveSegments(outboundLeg);
     const firstSeg = outboundSegments[0];
-    const originPlace = placesMap.get(outboundLeg.origin_place_id);
-    const destPlace = placesMap.get(outboundLeg.destination_place_id);
+    const originPlace = placesMap.get(String(outboundLeg.origin_place_id));
+    const destPlace = placesMap.get(String(outboundLeg.destination_place_id));
 
     const price = it.pricing_options[0]?.price?.amount ?? 0;
 
@@ -237,8 +251,8 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
       airlineCode: firstSeg.airlineCode,
       airlineName: firstSeg.airlineName,
       flightNumber: firstSeg.flightNumber,
-      origin: originPlace?.iata || from,
-      destination: destPlace?.iata || to,
+      origin: originPlace?.display_code || from,
+      destination: destPlace?.display_code || to,
       departureAt: outboundLeg.departure,
       arrivalAt: outboundLeg.arrival,
       duration: minutesToIsoDuration(outboundLeg.duration),
@@ -253,15 +267,15 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
 
     // Return leg for round-trip
     if (it.leg_ids.length > 1) {
-      const returnLeg = legsMap.get(it.leg_ids[1]);
+      const returnLeg = legsMap.get(String(it.leg_ids[1]));
       if (returnLeg) {
         const returnSegments = resolveSegments(returnLeg);
         const retFirstSeg = returnSegments[0];
-        const retOrigin = placesMap.get(returnLeg.origin_place_id);
-        const retDest = placesMap.get(returnLeg.destination_place_id);
+        const retOrigin = placesMap.get(String(returnLeg.origin_place_id));
+        const retDest = placesMap.get(String(returnLeg.destination_place_id));
 
-        result.returnOrigin = retOrigin?.iata || to;
-        result.returnDestination = retDest?.iata || from;
+        result.returnOrigin = retOrigin?.display_code || to;
+        result.returnDestination = retDest?.display_code || from;
         result.returnDepartureAt = returnLeg.departure;
         result.returnArrivalAt = returnLeg.arrival;
         result.returnDuration = minutesToIsoDuration(returnLeg.duration);

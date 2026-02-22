@@ -32,6 +32,10 @@ export interface FlightSegment {
   duration: string;
 }
 
+export interface CacheSearchResult extends FlightSearchResult {
+  queryCachedAt: string;
+}
+
 export interface FlightSearchResult {
   id: string;
   airlineCode: string;

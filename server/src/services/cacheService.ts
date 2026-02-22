@@ -140,6 +140,46 @@ export function getResultsByQueryId(queryId: number): FlightSearchResult[] {
   return rows.map(mapRowToResult);
 }
 
+export interface CacheSearchFilters {
+  origin?: string;
+  destination?: string;
+  departureDate?: string;
+}
+
+export function searchCachedResults(filters: CacheSearchFilters) {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters.origin) {
+    conditions.push('UPPER(r.origin) = ?');
+    params.push(filters.origin.toUpperCase().trim());
+  }
+  if (filters.destination) {
+    conditions.push('UPPER(r.destination) = ?');
+    params.push(filters.destination.toUpperCase().trim());
+  }
+  if (filters.departureDate) {
+    conditions.push('r.departure_at LIKE ?');
+    params.push(`${filters.departureDate}%`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const rows = db.prepare(`
+    SELECT r.*, q.departure_date AS query_departure_date, q.return_date AS query_return_date,
+           q.adults AS query_adults, q.currency AS query_currency, q.created_at AS query_cached_at
+    FROM results r
+    JOIN queries q ON q.id = r.query_id
+    ${where}
+    ORDER BY r.total_price ASC
+  `).all(...params) as Array<Record<string, unknown>>;
+
+  return rows.map((row) => ({
+    ...mapRowToResult(row),
+    queryCachedAt: row.query_cached_at as string,
+  }));
+}
+
 export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[]) => {
   const key = buildCacheKey(params);
 

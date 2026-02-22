@@ -15,6 +15,7 @@ export type {
   FlightSearchResult,
   FlightSegment,
   CachedQuery,
+  CacheSearchResult,
 } from './flight';
 
 export type {

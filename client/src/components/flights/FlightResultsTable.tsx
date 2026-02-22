@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronUp, ChevronDown, Plus, ArrowRight } from 'lucide-react';
+import { ChevronUp, ChevronDown, Plus, X, ArrowRight, Plane } from 'lucide-react';
 import type { FlightSearchResult, FlightSegment } from '../../types';
 import { useTripStore } from '../../store/useTripStore';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -21,51 +21,60 @@ function formatDuration(iso: string): string {
   return `${h}h ${m}m`;
 }
 
+function formatMinutes(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
 function formatTime(isoDate: string): string {
   if (!isoDate) return '';
   const date = new Date(isoDate);
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-function formatDate(isoDate: string): string {
+function formatDateShort(isoDate: string): string {
   if (!isoDate) return '';
-  return isoDate.split('T')[0];
+  const date = new Date(isoDate);
+  return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-function SegmentRow({ seg, isLast }: { seg: FlightSegment; isLast: boolean }) {
-  return (
-    <div className={`flex items-center gap-3 text-xs ${!isLast ? 'pb-1.5 mb-1.5 border-b border-gray-100' : ''}`}>
-      <span className="text-gray-500 w-14 flex-shrink-0 font-mono">{seg.flightNumber}</span>
-      <span className="text-gray-400 w-24 flex-shrink-0 truncate" title={seg.airlineName}>{seg.airlineName}</span>
-      <span className="font-medium w-8 flex-shrink-0">{seg.origin}</span>
-      <ArrowRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
-      <span className="font-medium w-8 flex-shrink-0">{seg.destination}</span>
-      <span className="text-gray-600 w-12 flex-shrink-0">{formatTime(seg.departureAt)}</span>
-      <span className="text-gray-300 flex-shrink-0">-</span>
-      <span className="text-gray-600 w-12 flex-shrink-0">{formatTime(seg.arrivalAt)}</span>
-      <span className="text-gray-400 flex-shrink-0">{formatDuration(seg.duration)}</span>
-    </div>
-  );
+/** Returns "+1", "+2" etc if arrival is on a later date than departure */
+function dayOffset(departure: string, arrival: string): string {
+  if (!departure || !arrival) return '';
+  const depDate = new Date(departure);
+  const arrDate = new Date(arrival);
+  // Compare calendar dates (not timestamps)
+  const depDay = new Date(depDate.getFullYear(), depDate.getMonth(), depDate.getDate());
+  const arrDay = new Date(arrDate.getFullYear(), arrDate.getMonth(), arrDate.getDate());
+  const diff = Math.round((arrDay.getTime() - depDay.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff > 0) return `+${diff}`;
+  return '';
 }
 
-function LegBlock({ label, segments, totalDuration, stops }: {
-  label?: string;
-  segments: FlightSegment[];
-  totalDuration: string;
-  stops: number;
-}) {
-  return (
-    <div>
-      {label && <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</div>}
-      {segments.map((seg, i) => (
-        <SegmentRow key={i} seg={seg} isLast={i === segments.length - 1} />
-      ))}
-      <div className="flex gap-3 mt-1 text-[10px] text-gray-400">
-        <span>Total: {formatDuration(totalDuration)}</span>
-        <span>{stops === 0 ? 'Direct' : `${stops} stop${stops > 1 ? 's' : ''}`}</span>
-      </div>
-    </div>
-  );
+/** Get unique carrier names from segments in order */
+function carrierNames(segments: FlightSegment[]): string {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const seg of segments) {
+    if (!seen.has(seg.airlineName)) {
+      seen.add(seg.airlineName);
+      names.push(seg.airlineName);
+    }
+  }
+  return names.join(', ');
+}
+
+/** Calculate total stopover time between segments */
+function stopoverDuration(segments: FlightSegment[]): number {
+  let total = 0;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const arrTime = new Date(segments[i].arrivalAt).getTime();
+    const depTime = new Date(segments[i + 1].departureAt).getTime();
+    total += Math.max(0, depTime - arrTime);
+  }
+  return Math.round(total / (1000 * 60)); // minutes
 }
 
 interface FlightResultsTableProps {
@@ -76,6 +85,7 @@ interface FlightResultsTableProps {
 export function FlightResultsTable({ results, passengers }: FlightResultsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('totalPrice');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [selectedFlight, setSelectedFlight] = useState<FlightSearchResult | null>(null);
 
   const columnOrder = useTripStore((s) => s.columnOrder);
   const columns = useTripStore((s) => s.columns);
@@ -141,115 +151,328 @@ export function FlightResultsTable({ results, passengers }: FlightResultsTablePr
   };
 
   const thClass = "px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none";
+  const thStatic = "px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
 
   return (
-    <div className="overflow-auto flex-1">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50 sticky top-0">
-          <tr>
-            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Itinerary</th>
-            <th className={thClass} onClick={() => handleSort('departureAt')}>
-              <span className="flex items-center gap-1">Date <SortIcon col="departureAt" /></span>
-            </th>
-            <th className={thClass} onClick={() => handleSort('stops')}>
-              <span className="flex items-center gap-1">Stops <SortIcon col="stops" /></span>
-            </th>
-            <th className={thClass} onClick={() => handleSort('duration')}>
-              <span className="flex items-center gap-1">Duration <SortIcon col="duration" /></span>
-            </th>
-            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Per Person</th>
-            <th className={`${thClass} text-right`} onClick={() => handleSort('totalPrice')}>
-              <span className="flex items-center justify-end gap-1">Total <SortIcon col="totalPrice" /></span>
-            </th>
-            <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Add</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {sorted.map((r) => (
-            <tr key={r.id} className="hover:bg-blue-50/30 align-top">
-              <td className="px-3 py-2.5">
-                {r.segments && r.segments.length > 0 ? (
-                  <div className="space-y-2">
-                    <LegBlock
-                      label={r.returnSegments ? 'Outbound' : undefined}
-                      segments={r.segments}
-                      totalDuration={r.duration}
-                      stops={r.stops}
-                    />
-                    {r.returnSegments && r.returnSegments.length > 0 && (
-                      <LegBlock
-                        label="Return"
-                        segments={r.returnSegments}
-                        totalDuration={r.returnDuration || ''}
-                        stops={r.returnStops ?? 0}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-sm">
-                    <div>{r.airlineName} {r.flightNumber}</div>
-                    <div className="text-xs text-gray-500">
-                      {r.origin} → {r.stopCodes.length > 0 ? r.stopCodes.join(' → ') + ' → ' : ''}{r.destination}
-                    </div>
-                  </div>
-                )}
-              </td>
-              <td className="px-3 py-2.5 text-sm whitespace-nowrap">
-                <div>{formatDate(r.departureAt)}</div>
-                {r.returnDepartureAt && (
-                  <div className="text-xs text-gray-400 mt-0.5">{formatDate(r.returnDepartureAt)}</div>
-                )}
-              </td>
-              <td className="px-3 py-2.5 text-sm text-center whitespace-nowrap">
-                <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${
-                  r.stops === 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {r.stops === 0 ? 'Direct' : r.stops}
-                </span>
-                {r.returnStops !== undefined && (
-                  <div className="mt-0.5">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${
-                      r.returnStops === 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {r.returnStops === 0 ? 'Direct' : r.returnStops}
-                    </span>
-                  </div>
-                )}
-              </td>
-              <td className="px-3 py-2.5 text-sm whitespace-nowrap">
-                <div>{formatDuration(r.duration)}</div>
-                {r.returnDuration && (
-                  <div className="text-xs text-gray-400 mt-0.5">{formatDuration(r.returnDuration)}</div>
-                )}
-              </td>
-              <td className="px-3 py-2.5 text-sm text-right whitespace-nowrap text-gray-600">
-                {formatCurrency(r.pricePerPerson)}
-              </td>
-              <td className="px-3 py-2.5 text-sm text-right whitespace-nowrap font-semibold text-blue-700">
-                {formatCurrency(r.totalPrice)}
-              </td>
-              <td className="px-3 py-2.5 whitespace-nowrap">
-                {columnOrder.length > 0 ? (
-                  <div className="flex flex-col gap-1">
-                    {columnOrder.map((colId) => (
-                      <button
-                        key={colId}
-                        onClick={() => addFlight(r, colId)}
-                        className="inline-flex items-center gap-0.5 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100 whitespace-nowrap"
-                      >
-                        <Plus className="w-3 h-3" />
-                        {columns[colId]?.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-xs text-gray-400">No destinations</span>
-                )}
-              </td>
+    <>
+      <div className="overflow-auto flex-1">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50 sticky top-0">
+            <tr>
+              <th className={thStatic}>Route</th>
+              <th className={thClass} onClick={() => handleSort('departureAt')}>
+                <span className="flex items-center gap-1">Date <SortIcon col="departureAt" /></span>
+              </th>
+              <th className={thStatic}>Dep</th>
+              <th className={thStatic}>Arr</th>
+              <th className={thClass} onClick={() => handleSort('airlineName')}>
+                <span className="flex items-center gap-1">Carrier <SortIcon col="airlineName" /></span>
+              </th>
+              <th className={thClass} onClick={() => handleSort('duration')}>
+                <span className="flex items-center gap-1">Duration <SortIcon col="duration" /></span>
+              </th>
+              <th className={thClass} onClick={() => handleSort('stops')}>
+                <span className="flex items-center gap-1">Stops <SortIcon col="stops" /></span>
+              </th>
+              <th className={thStatic}>Layover</th>
+              <th className={`${thStatic} text-right`}>Per Person</th>
+              <th className={`${thClass} text-right`} onClick={() => handleSort('totalPrice')}>
+                <span className="flex items-center justify-end gap-1">Total <SortIcon col="totalPrice" /></span>
+              </th>
+              <th className={thStatic}>Add</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {sorted.map((r) => {
+              const arrOffset = dayOffset(r.departureAt, r.arrivalAt);
+              const retArrOffset = r.returnDepartureAt && r.returnArrivalAt
+                ? dayOffset(r.returnDepartureAt, r.returnArrivalAt)
+                : '';
+              const outCarriers = r.segments?.length > 0 ? carrierNames(r.segments) : r.airlineName;
+              const retCarriers = r.returnSegments?.length ? carrierNames(r.returnSegments) : '';
+              const outStopover = r.segments?.length > 1 ? stopoverDuration(r.segments) : 0;
+              const retStopover = r.returnSegments && r.returnSegments.length > 1
+                ? stopoverDuration(r.returnSegments) : 0;
+
+              return (
+                <tr
+                  key={r.id}
+                  className="hover:bg-blue-50/40 cursor-pointer align-top"
+                  onClick={() => setSelectedFlight(r)}
+                >
+                  {/* Route */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap">
+                    <div className="font-medium">{r.origin} <ArrowRight className="w-3 h-3 inline text-gray-400" /> {r.destination}</div>
+                    {r.returnOrigin && (
+                      <div className="text-xs text-gray-400 mt-0.5">{r.returnOrigin} <ArrowRight className="w-3 h-3 inline text-gray-300" /> {r.returnDestination}</div>
+                    )}
+                  </td>
+
+                  {/* Date */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap">
+                    <div>{formatDateShort(r.departureAt)}</div>
+                    {r.returnDepartureAt && (
+                      <div className="text-xs text-gray-400 mt-0.5">{formatDateShort(r.returnDepartureAt)}</div>
+                    )}
+                  </td>
+
+                  {/* Dep time */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap font-mono">
+                    <div>{formatTime(r.departureAt)}</div>
+                    {r.returnDepartureAt && (
+                      <div className="text-xs text-gray-400 mt-0.5">{formatTime(r.returnDepartureAt)}</div>
+                    )}
+                  </td>
+
+                  {/* Arr time with +N indicator */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap font-mono">
+                    <div>
+                      {formatTime(r.arrivalAt)}
+                      {arrOffset && <sup className="text-[10px] text-red-500 ml-0.5">{arrOffset}</sup>}
+                    </div>
+                    {r.returnArrivalAt && (
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {formatTime(r.returnArrivalAt)}
+                        {retArrOffset && <sup className="text-[10px] text-red-400 ml-0.5">{retArrOffset}</sup>}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Carrier */}
+                  <td className="px-3 py-2.5 text-sm max-w-[180px]">
+                    <div className="truncate" title={outCarriers}>{outCarriers}</div>
+                    {retCarriers && (
+                      <div className="text-xs text-gray-400 mt-0.5 truncate" title={retCarriers}>{retCarriers}</div>
+                    )}
+                  </td>
+
+                  {/* Duration */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap">
+                    <div>{formatDuration(r.duration)}</div>
+                    {r.returnDuration && (
+                      <div className="text-xs text-gray-400 mt-0.5">{formatDuration(r.returnDuration)}</div>
+                    )}
+                  </td>
+
+                  {/* Stops */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap">
+                    <div>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${
+                        r.stops === 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {r.stops === 0 ? 'Direct' : r.stops}
+                      </span>
+                      {r.stopCodes.length > 0 && (
+                        <span className="text-[10px] text-gray-400 ml-1">{r.stopCodes.join(', ')}</span>
+                      )}
+                    </div>
+                    {r.returnStops !== undefined && (
+                      <div className="mt-0.5">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${
+                          r.returnStops === 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {r.returnStops === 0 ? 'Direct' : r.returnStops}
+                        </span>
+                        {r.returnStopCodes && r.returnStopCodes.length > 0 && (
+                          <span className="text-[10px] text-gray-400 ml-1">{r.returnStopCodes.join(', ')}</span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Layover */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap text-gray-500">
+                    <div>{outStopover > 0 ? formatMinutes(outStopover) : '-'}</div>
+                    {r.returnSegments && (
+                      <div className="text-xs text-gray-400 mt-0.5">{retStopover > 0 ? formatMinutes(retStopover) : '-'}</div>
+                    )}
+                  </td>
+
+                  {/* Per Person */}
+                  <td className="px-3 py-2.5 text-sm text-right whitespace-nowrap text-gray-600">
+                    {formatCurrency(r.pricePerPerson)}
+                  </td>
+
+                  {/* Total */}
+                  <td className="px-3 py-2.5 text-sm text-right whitespace-nowrap font-semibold text-blue-700">
+                    {formatCurrency(r.totalPrice)}
+                  </td>
+
+                  {/* Add button */}
+                  <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <AddToTripButton
+                      columnOrder={columnOrder}
+                      columns={columns}
+                      onSelect={(colId) => addFlight(r, colId)}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Flight Detail Modal */}
+      {selectedFlight && (
+        <FlightDetailModal
+          flight={selectedFlight}
+          onClose={() => setSelectedFlight(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function AddToTripButton({ columnOrder, columns, onSelect }: {
+  columnOrder: string[];
+  columns: Record<string, { name: string }>;
+  onSelect: (colId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (columnOrder.length === 0) {
+    return <span className="text-xs text-gray-400">No destinations</span>;
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1 text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded hover:bg-blue-700 whitespace-nowrap"
+      >
+        <Plus className="w-3 h-3" />
+        Add to trip
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]">
+            {columnOrder.map((colId) => (
+              <button
+                key={colId}
+                onClick={() => { onSelect(colId); setOpen(false); }}
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+              >
+                {columns[colId]?.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FlightDetailModal({ flight, onClose }: { flight: FlightSearchResult; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {flight.origin} <ArrowRight className="w-4 h-4 inline text-gray-400" /> {flight.destination}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {formatDateShort(flight.departureAt)} &middot; {formatCurrency(flight.totalPrice)} total
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+            <X className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-5">
+          {/* Outbound */}
+          <LegDetail
+            label={flight.returnSegments ? 'Outbound' : undefined}
+            segments={flight.segments}
+            totalDuration={flight.duration}
+            stops={flight.stops}
+            stopCodes={flight.stopCodes}
+          />
+
+          {/* Return */}
+          {flight.returnSegments && flight.returnSegments.length > 0 && (
+            <LegDetail
+              label="Return"
+              segments={flight.returnSegments}
+              totalDuration={flight.returnDuration || ''}
+              stops={flight.returnStops ?? 0}
+              stopCodes={flight.returnStopCodes || []}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LegDetail({ label, segments, totalDuration, stops, stopCodes }: {
+  label?: string;
+  segments: FlightSegment[];
+  totalDuration: string;
+  stops: number;
+  stopCodes: string[];
+}) {
+  return (
+    <div>
+      {label && (
+        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{label}</div>
+      )}
+      <div className="space-y-0">
+        {segments.map((seg, i) => {
+          const offset = dayOffset(segments[0].departureAt, seg.arrivalAt);
+          // Layover between this segment and the next
+          const layover = i < segments.length - 1
+            ? Math.round((new Date(segments[i + 1].departureAt).getTime() - new Date(seg.arrivalAt).getTime()) / 60000)
+            : 0;
+
+          return (
+            <div key={i}>
+              <div className="flex items-start gap-3 py-2">
+                <Plane className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-mono font-medium">{seg.flightNumber}</span>
+                    <span className="text-gray-400">&middot;</span>
+                    <span className="text-gray-600">{seg.airlineName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-sm">
+                    <div>
+                      <span className="font-medium">{seg.origin}</span>
+                      <span className="text-gray-500 ml-1.5">{formatTime(seg.departureAt)}</span>
+                    </div>
+                    <ArrowRight className="w-3 h-3 text-gray-300" />
+                    <div>
+                      <span className="font-medium">{seg.destination}</span>
+                      <span className="text-gray-500 ml-1.5">
+                        {formatTime(seg.arrivalAt)}
+                        {offset && <sup className="text-[10px] text-red-500 ml-0.5">{offset}</sup>}
+                      </span>
+                    </div>
+                    <span className="text-gray-400 text-xs">{formatDuration(seg.duration)}</span>
+                  </div>
+                </div>
+              </div>
+              {layover > 0 && (
+                <div className="ml-7 py-1.5 text-xs text-amber-600 border-l-2 border-dashed border-amber-200 pl-3">
+                  {formatMinutes(layover)} layover in {segments[i + 1].origin}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-4 mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+        <span>Total: {formatDuration(totalDuration)}</span>
+        <span>{stops === 0 ? 'Direct' : `${stops} stop${stops > 1 ? 's' : ''}${stopCodes.length > 0 ? ` (${stopCodes.join(', ')})` : ''}`}</span>
+      </div>
     </div>
   );
 }
