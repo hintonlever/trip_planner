@@ -56,6 +56,7 @@ db.exec(`
 // Migration for existing databases: add segments columns if missing
 try { db.exec('ALTER TABLE results ADD COLUMN segments_json TEXT'); } catch { /* column already exists */ }
 try { db.exec('ALTER TABLE results ADD COLUMN return_segments_json TEXT'); } catch { /* column already exists */ }
+try { db.exec('ALTER TABLE queries ADD COLUMN route_search_id TEXT'); } catch { /* column already exists */ }
 
 function buildCacheKey(params: FlightSearchParams): string {
   return [
@@ -64,7 +65,6 @@ function buildCacheKey(params: FlightSearchParams): string {
     params.departureDate,
     params.returnDate || '',
     String(params.adults),
-    params.nonStop ? '1' : '0',
     (params.currency || 'USD').toUpperCase(),
   ].join('|');
 }
@@ -180,7 +180,7 @@ export function searchCachedResults(filters: CacheSearchFilters) {
   }));
 }
 
-export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[]) => {
+export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[], routeSearchId?: string) => {
   const key = buildCacheKey(params);
 
   // Delete old cached entry if it exists (for fresh refreshes)
@@ -190,8 +190,8 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
   }
 
   const info = db.prepare(`
-    INSERT INTO queries (origin, destination, departure_date, return_date, adults, non_stop, currency, cache_key, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO queries (origin, destination, departure_date, return_date, adults, non_stop, currency, cache_key, created_at, route_search_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     params.origin.toUpperCase().trim(),
     params.destination.toUpperCase().trim(),
@@ -202,6 +202,7 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
     (params.currency || 'USD').toUpperCase(),
     key,
     new Date().toISOString(),
+    routeSearchId || null,
   );
 
   const queryId = info.lastInsertRowid;
@@ -248,3 +249,18 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
     );
   }
 });
+
+export function getRouteSearchResults(routeSearchId: string) {
+  const rows = db.prepare(`
+    SELECT r.*, q.departure_date, q.created_at AS query_cached_at
+    FROM results r
+    JOIN queries q ON q.id = r.query_id
+    WHERE q.route_search_id = ?
+    ORDER BY q.departure_date ASC, r.total_price ASC
+  `).all(routeSearchId) as Array<Record<string, unknown>>;
+
+  return rows.map((row) => ({
+    ...mapRowToResult(row),
+    departureDate: row.departure_date as string,
+  }));
+}

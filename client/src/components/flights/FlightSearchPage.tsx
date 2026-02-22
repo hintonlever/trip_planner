@@ -1,10 +1,50 @@
 import { useState } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, BarChart3 } from 'lucide-react';
 import { searchFlights } from '../../services/flightService';
 import type { FlightSearchResult } from '../../types';
 import { FlightResultsTable } from './FlightResultsTable';
+import { RouteSearchPanel } from './RouteSearchPanel';
+
+type SearchMode = 'specific' | 'route';
 
 export function FlightSearchPage() {
+  const [searchMode, setSearchMode] = useState<SearchMode>('specific');
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Sub-tab navigation */}
+      <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-2">
+        <button
+          onClick={() => setSearchMode('specific')}
+          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md transition-colors ${
+            searchMode === 'specific'
+              ? 'bg-blue-50 text-blue-700 font-medium'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <Search className="w-3.5 h-3.5" />
+          Specific Date
+        </button>
+        <button
+          onClick={() => setSearchMode('route')}
+          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md transition-colors ${
+            searchMode === 'route'
+              ? 'bg-blue-50 text-blue-700 font-medium'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5" />
+          Route Search
+        </button>
+      </div>
+
+      {searchMode === 'specific' && <SpecificSearchPanel />}
+      {searchMode === 'route' && <RouteSearchPanel />}
+    </div>
+  );
+}
+
+function SpecificSearchPanel() {
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>('oneway');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
@@ -17,6 +57,10 @@ export function FlightSearchPage() {
   const [error, setError] = useState('');
   const [results, setResults] = useState<FlightSearchResult[]>([]);
 
+  const displayResults = nonStop
+    ? results.filter((r) => r.stops === 0)
+    : results;
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -28,7 +72,6 @@ export function FlightSearchPage() {
         destination: destination.toUpperCase(),
         departureDate: date,
         adults,
-        nonStop,
         currency,
         returnDate: tripType === 'roundtrip' ? returnDate : undefined,
       });
@@ -170,9 +213,12 @@ export function FlightSearchPage() {
       {results.length > 0 && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
-            {results.length} result{results.length !== 1 ? 's' : ''} found
+            {displayResults.length} result{displayResults.length !== 1 ? 's' : ''} found
+            {nonStop && displayResults.length !== results.length && (
+              <span className="text-gray-400 ml-1">({results.length} total, filtering to direct)</span>
+            )}
           </div>
-          <FlightResultsTable results={results} passengers={adults} />
+          <FlightResultsTable results={displayResults} passengers={adults} />
         </div>
       )}
 

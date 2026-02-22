@@ -119,7 +119,7 @@ function minutesToIsoDuration(minutes: number): string {
   return `PT${h}H${m}M`;
 }
 
-export async function searchFlightsWithCache(params: FlightSearchParams, fresh = false): Promise<FlightSearchResult[]> {
+export async function searchFlightsWithCache(params: FlightSearchParams, fresh = false, routeSearchId?: string): Promise<FlightSearchResult[]> {
   if (!fresh) {
     const cached = getCachedResults(params);
     if (cached) {
@@ -129,7 +129,7 @@ export async function searchFlightsWithCache(params: FlightSearchParams, fresh =
   }
 
   const results = await searchFlights(params);
-  cacheResults(params, results);
+  cacheResults(params, results, routeSearchId);
   console.log(`Cached ${results.length} results for ${params.origin} -> ${params.destination}`);
   return results;
 }
@@ -152,27 +152,30 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
     url = `https://api.flightapi.io/onewaytrip/${apiKey}/${from}/${to}/${params.departureDate}/${params.adults}/0/0/${cabin}/${currency}`;
   }
 
+  // Log the request URL (mask API key)
+  console.log(`FlightAPI request: ${url.replace(apiKey, '***')}`);
+
   let response = await fetch(url);
 
-  // Retry once after a short delay on 400 (rate limit / transient error)
+  // Retry once after a short delay on 400 (transient error)
   if (response.status === 400) {
-    console.log('FlightAPI returned 400, retrying in 3s...');
+    const text = await response.text().catch(() => '');
+    console.log(`FlightAPI 400 response: ${text} — retrying in 3s...`);
     await new Promise((r) => setTimeout(r, 3000));
     response = await fetch(url);
   }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    if (response.status === 400 && text.includes('something went wrong')) {
-      throw new Error('FlightAPI rate limited — wait a minute and try again.');
-    }
+    console.log(`FlightAPI error ${response.status}: ${text}`);
     throw new Error(`FlightAPI error: ${response.status} - ${text}`);
   }
 
   const body = await response.json() as FlightApiResponse;
 
-  // Debug: log top-level keys and array sizes
+  // Debug: log response structure
   console.log('FlightAPI response keys:', Object.keys(body));
+  console.log('Type of itineraries:', typeof body.itineraries, Array.isArray(body.itineraries));
   console.log('Counts:', {
     itineraries: body.itineraries?.length,
     legs: body.legs?.length,
@@ -180,8 +183,11 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
     places: body.places?.length,
     carriers: body.carriers?.length,
   });
-  if (body.places?.length > 0) console.log('Sample place:', JSON.stringify(body.places[0]));
-  if (body.segments?.length > 0) console.log('Sample segment:', JSON.stringify(body.segments[0]));
+  // Log raw itineraries value if it's not an array (might be an object/map)
+  if (body.itineraries && !Array.isArray(body.itineraries)) {
+    console.log('itineraries is NOT an array! Keys:', Object.keys(body.itineraries as unknown as object));
+    console.log('itineraries sample:', JSON.stringify(body.itineraries).substring(0, 500));
+  }
 
   // Build lookup maps - use string keys for safety (API may mix string/number IDs)
   const placesMap = new Map<string, FlightApiPlace>();
@@ -204,16 +210,16 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
     segmentsMap.set(String(s.id), s);
   }
 
-  let itineraries = body.itineraries ?? [];
+  const itineraries = body.itineraries ?? [];
 
-  // Filter non-stop if requested
-  if (params.nonStop) {
-    itineraries = itineraries.filter((it) => {
-      const outboundLeg = legsMap.get(String(it.leg_ids[0]));
-      return outboundLeg && outboundLeg.stop_count === 0;
-    });
+  // Log stop count breakdown
+  const stopBreakdown: Record<number, number> = {};
+  for (const it of itineraries) {
+    const leg = legsMap.get(String(it.leg_ids[0]));
+    const stops = leg?.stop_count ?? -1;
+    stopBreakdown[stops] = (stopBreakdown[stops] || 0) + 1;
   }
-
+  console.log(`Total itineraries: ${itineraries.length}, by stops:`, stopBreakdown);
 
   function resolveSegments(leg: FlightApiLeg): FlightSegment[] {
     return leg.segment_ids.map((segId) => {

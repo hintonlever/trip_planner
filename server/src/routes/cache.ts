@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllQueries, getResultsByQueryId, searchCachedResults } from '../services/cacheService.js';
+import { getAllQueries, getResultsByQueryId, searchCachedResults, getRouteSearchResults } from '../services/cacheService.js';
 
 export const cacheRouter = Router();
 
@@ -47,6 +47,18 @@ cacheRouter.get('/queries/:id/results', (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('Cache results error:', message);
+    res.status(500).json({ error: message });
+  }
+});
+
+cacheRouter.get('/route-search/:id', (req, res) => {
+  try {
+    const routeSearchId = req.params.id;
+    const results = getRouteSearchResults(routeSearchId);
+    res.json({ results });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Route search results error:', message);
     res.status(500).json({ error: message });
   }
 });

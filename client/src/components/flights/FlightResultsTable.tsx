@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, Plus, X, ArrowRight, Plane } from 'lucide-react
 import type { FlightSearchResult, FlightSegment, CacheSearchResult } from '../../types';
 import { useTripStore } from '../../store/useTripStore';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { parseDuration, formatDuration, formatMinutes } from '../../utils/flightUtils';
 
 function isCacheResult(r: FlightSearchResult): r is CacheSearchResult {
   return 'queryCachedAt' in r;
@@ -28,27 +29,6 @@ function formatCacheTimestamp(iso: string): string {
 
 type SortKey = 'totalPrice' | 'airlineName' | 'duration' | 'stops' | 'departureAt';
 type SortDir = 'asc' | 'desc';
-
-function parseDuration(iso: string): number {
-  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-  if (!match) return 0;
-  return (parseInt(match[1] || '0') * 60) + parseInt(match[2] || '0');
-}
-
-function formatDuration(iso: string): string {
-  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-  if (!match) return iso;
-  const h = match[1] || '0';
-  const m = match[2] || '0';
-  return `${h}h ${m}m`;
-}
-
-function formatMinutes(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
-}
 
 function formatTime(isoDate: string): string {
   if (!isoDate) return '';

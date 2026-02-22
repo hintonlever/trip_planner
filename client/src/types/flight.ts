@@ -38,6 +38,26 @@ export interface CacheSearchResult extends FlightSearchResult {
   queryCachedAt: string;
 }
 
+export interface RouteSearchParams {
+  origin: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  daysOfWeek: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
+  adults: number;
+  nonStop?: boolean;
+  currency?: string;
+}
+
+export interface RouteSearchDayResult {
+  date: string;
+  results: FlightSearchResult[];
+  cheapest: FlightSearchResult | null;
+  cheapestPrice: number | null;
+  status: 'pending' | 'loading' | 'done' | 'error';
+  error?: string;
+}
+
 export interface FlightSearchResult {
   id: string;
   airlineCode: string;

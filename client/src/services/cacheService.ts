@@ -44,3 +44,15 @@ export async function fetchCachedResults(queryId: number): Promise<FlightSearchR
   const data = (await response.json()) as { results: FlightSearchResult[] };
   return data.results;
 }
+
+export async function fetchRouteSearchResults(routeSearchId: string): Promise<(FlightSearchResult & { departureDate: string })[]> {
+  const response = await fetch(`/api/cache/route-search/${routeSearchId}`);
+
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || `Failed to fetch route search results (${response.status})`);
+  }
+
+  const data = (await response.json()) as { results: (FlightSearchResult & { departureDate: string })[] };
+  return data.results;
+}
