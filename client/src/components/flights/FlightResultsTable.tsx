@@ -1,8 +1,30 @@
 import { useState } from 'react';
 import { ChevronUp, ChevronDown, Plus, X, ArrowRight, Plane } from 'lucide-react';
-import type { FlightSearchResult, FlightSegment } from '../../types';
+import type { FlightSearchResult, FlightSegment, CacheSearchResult } from '../../types';
 import { useTripStore } from '../../store/useTripStore';
 import { formatCurrency } from '../../utils/formatCurrency';
+
+function isCacheResult(r: FlightSearchResult): r is CacheSearchResult {
+  return 'queryCachedAt' in r;
+}
+
+function formatAge(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+function formatCacheTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
 
 type SortKey = 'totalPrice' | 'airlineName' | 'duration' | 'stops' | 'departureAt';
 type SortDir = 'asc' | 'desc';
@@ -53,7 +75,7 @@ function dayOffset(departure: string, arrival: string): string {
   return '';
 }
 
-/** Get unique carrier names from segments in order */
+/** Get unique marketing carrier names from segments in order */
 function carrierNames(segments: FlightSegment[]): string {
   const seen = new Set<string>();
   const names: string[] = [];
@@ -64,6 +86,19 @@ function carrierNames(segments: FlightSegment[]): string {
     }
   }
   return names.join(', ');
+}
+
+/** Get unique operating carriers that differ from marketing carriers */
+function operatingCarrierNote(segments: FlightSegment[]): string {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const seg of segments) {
+    if (seg.operatingCarrierName && !seen.has(seg.operatingCarrierName)) {
+      seen.add(seg.operatingCarrierName);
+      names.push(seg.operatingCarrierName);
+    }
+  }
+  return names.length > 0 ? `op. by ${names.join(', ')}` : '';
 }
 
 /** Calculate total stopover time between segments */
@@ -80,9 +115,10 @@ function stopoverDuration(segments: FlightSegment[]): number {
 interface FlightResultsTableProps {
   results: FlightSearchResult[];
   passengers: number;
+  showCacheAge?: boolean;
 }
 
-export function FlightResultsTable({ results, passengers }: FlightResultsTableProps) {
+export function FlightResultsTable({ results, passengers, showCacheAge }: FlightResultsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('totalPrice');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selectedFlight, setSelectedFlight] = useState<FlightSearchResult | null>(null);
@@ -179,6 +215,7 @@ export function FlightResultsTable({ results, passengers }: FlightResultsTablePr
               <th className={`${thClass} text-right`} onClick={() => handleSort('totalPrice')}>
                 <span className="flex items-center justify-end gap-1">Total <SortIcon col="totalPrice" /></span>
               </th>
+              {showCacheAge && <th className={thStatic}>Cached</th>}
               <th className={thStatic}>Add</th>
             </tr>
           </thead>
@@ -189,7 +226,9 @@ export function FlightResultsTable({ results, passengers }: FlightResultsTablePr
                 ? dayOffset(r.returnDepartureAt, r.returnArrivalAt)
                 : '';
               const outCarriers = r.segments?.length > 0 ? carrierNames(r.segments) : r.airlineName;
+              const outOpNote = r.segments?.length > 0 ? operatingCarrierNote(r.segments) : '';
               const retCarriers = r.returnSegments?.length ? carrierNames(r.returnSegments) : '';
+              const retOpNote = r.returnSegments?.length ? operatingCarrierNote(r.returnSegments) : '';
               const outStopover = r.segments?.length > 1 ? stopoverDuration(r.segments) : 0;
               const retStopover = r.returnSegments && r.returnSegments.length > 1
                 ? stopoverDuration(r.returnSegments) : 0;
@@ -239,10 +278,16 @@ export function FlightResultsTable({ results, passengers }: FlightResultsTablePr
                   </td>
 
                   {/* Carrier */}
-                  <td className="px-3 py-2.5 text-sm max-w-[180px]">
+                  <td className="px-3 py-2.5 text-sm max-w-[220px]">
                     <div className="truncate" title={outCarriers}>{outCarriers}</div>
+                    {outOpNote && (
+                      <div className="text-[11px] text-gray-400 mt-0.5 truncate italic" title={outOpNote}>{outOpNote}</div>
+                    )}
                     {retCarriers && (
                       <div className="text-xs text-gray-400 mt-0.5 truncate" title={retCarriers}>{retCarriers}</div>
+                    )}
+                    {retOpNote && (
+                      <div className="text-[11px] text-gray-400 truncate italic" title={retOpNote}>{retOpNote}</div>
                     )}
                   </td>
 
@@ -297,6 +342,14 @@ export function FlightResultsTable({ results, passengers }: FlightResultsTablePr
                   <td className="px-3 py-2.5 text-sm text-right whitespace-nowrap font-semibold text-blue-700">
                     {formatCurrency(r.totalPrice)}
                   </td>
+
+                  {/* Cache age */}
+                  {showCacheAge && isCacheResult(r) && (
+                    <td className="px-3 py-2.5 text-xs whitespace-nowrap text-gray-400" title={r.queryCachedAt}>
+                      <div>{formatAge(r.queryCachedAt)}</div>
+                      <div className="text-[10px] text-gray-300">{formatCacheTimestamp(r.queryCachedAt)}</div>
+                    </td>
+                  )}
 
                   {/* Add button */}
                   <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -438,10 +491,13 @@ function LegDetail({ label, segments, totalDuration, stops, stopCodes }: {
               <div className="flex items-start gap-3 py-2">
                 <Plane className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-sm flex-wrap">
                     <span className="font-mono font-medium">{seg.flightNumber}</span>
                     <span className="text-gray-400">&middot;</span>
                     <span className="text-gray-600">{seg.airlineName}</span>
+                    {seg.operatingCarrierName && (
+                      <span className="text-xs text-gray-400 italic">op. by {seg.operatingCarrierName}</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-sm">
                     <div>

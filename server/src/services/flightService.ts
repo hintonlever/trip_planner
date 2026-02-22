@@ -14,6 +14,8 @@ export interface FlightSegment {
   flightNumber: string;
   airlineCode: string;
   airlineName: string;
+  operatingCarrierCode?: string;
+  operatingCarrierName?: string;
   origin: string;
   destination: string;
   departureAt: string;
@@ -150,10 +152,20 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
     url = `https://api.flightapi.io/onewaytrip/${apiKey}/${from}/${to}/${params.departureDate}/${params.adults}/0/0/${cabin}/${currency}`;
   }
 
-  const response = await fetch(url);
+  let response = await fetch(url);
+
+  // Retry once after a short delay on 400 (rate limit / transient error)
+  if (response.status === 400) {
+    console.log('FlightAPI returned 400, retrying in 3s...');
+    await new Promise((r) => setTimeout(r, 3000));
+    response = await fetch(url);
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
+    if (response.status === 400 && text.includes('something went wrong')) {
+      throw new Error('FlightAPI rate limited — wait a minute and try again.');
+    }
     throw new Error(`FlightAPI error: ${response.status} - ${text}`);
   }
 
@@ -202,19 +214,31 @@ async function searchFlights(params: FlightSearchParams): Promise<FlightSearchRe
     });
   }
 
-  // Limit to 20 results
-  itineraries = itineraries.slice(0, 20);
 
   function resolveSegments(leg: FlightApiLeg): FlightSegment[] {
     return leg.segment_ids.map((segId) => {
       const seg = segmentsMap.get(String(segId))!;
-      const segCarrier = carriersMap.get(String(seg.marketing_carrier_id));
+      const mktCarrier = carriersMap.get(String(seg.marketing_carrier_id));
+      const opCarrier = carriersMap.get(String(seg.operating_carrier_id));
       const segOrigin = placesMap.get(String(seg.origin_place_id));
       const segDest = placesMap.get(String(seg.destination_place_id));
+
+      const mktCode = mktCarrier?.alt_id || String(seg.marketing_carrier_id);
+      const mktName = mktCarrier?.name || mktCode;
+      const opCode = opCarrier?.alt_id || String(seg.operating_carrier_id);
+      const opName = opCarrier?.name || opCode;
+
+      // Only include operating carrier if it differs from marketing
+      const isDifferentOperator = String(seg.operating_carrier_id) !== String(seg.marketing_carrier_id);
+
       return {
-        flightNumber: `${segCarrier?.alt_id || ''} ${seg.marketing_flight_number}`.trim(),
-        airlineCode: segCarrier?.alt_id || String(seg.marketing_carrier_id),
-        airlineName: segCarrier?.name || segCarrier?.alt_id || String(seg.marketing_carrier_id),
+        flightNumber: `${mktCode} ${seg.marketing_flight_number}`.trim(),
+        airlineCode: mktCode,
+        airlineName: mktName,
+        ...(isDifferentOperator && {
+          operatingCarrierCode: opCode,
+          operatingCarrierName: opName,
+        }),
         origin: segOrigin?.display_code || '???',
         destination: segDest?.display_code || '???',
         departureAt: seg.departure,

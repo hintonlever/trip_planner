@@ -25,6 +25,8 @@ export interface FlightSegment {
   flightNumber: string;
   airlineCode: string;
   airlineName: string;
+  operatingCarrierCode?: string;
+  operatingCarrierName?: string;
   origin: string;
   destination: string;
   departureAt: string;

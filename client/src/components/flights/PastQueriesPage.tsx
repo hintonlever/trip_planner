@@ -225,7 +225,7 @@ export function PastQueriesPage() {
                 <div className="px-6 py-2 text-sm text-gray-500 border-b border-gray-100">
                   {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found across cached queries
                 </div>
-                <FlightResultsTable results={searchResults} passengers={1} />
+                <FlightResultsTable results={searchResults} passengers={1} showCacheAge />
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400 text-sm">
