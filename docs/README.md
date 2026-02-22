@@ -5,7 +5,7 @@ A trip planning app with flight search, drag-and-drop itinerary building, and an
 ## Prerequisites
 
 - Node.js (v18+)
-- An [Amadeus API](https://developers.amadeus.com/) account (free test tier works)
+- A [FlightAPI.io](https://www.flightapi.io/) account (free tier available)
 
 ## Setup
 
@@ -21,8 +21,7 @@ cd ../server && npm install
 Create a `server/.env` file:
 
 ```
-AMADEUS_CLIENT_ID=your_client_id
-AMADEUS_CLIENT_SECRET=your_client_secret
+FLIGHTAPI_KEY=your_api_key
 ```
 
 ### 3. Run the app

@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import type { FlightSearchParams, FlightSearchResult } from './amadeusService.js';
+import type { FlightSearchParams, FlightSearchResult } from './flightService.js';
 
 const dbPath = path.join(__dirname, '..', '..', 'cache.db');
 const db = new Database(dbPath);

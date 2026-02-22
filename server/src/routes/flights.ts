@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { searchFlightsWithCache } from '../services/amadeusService.js';
+import { searchFlightsWithCache } from '../services/flightService.js';
 
 export const flightsRouter = Router();
 
