@@ -8,6 +8,19 @@ export interface FlightSearchParams {
   returnDate?: string;
 }
 
+export interface CachedQuery {
+  id: number;
+  origin: string;
+  destination: string;
+  departure_date: string;
+  return_date: string | null;
+  adults: number;
+  non_stop: number;
+  currency: string;
+  created_at: string;
+  result_count: number;
+}
+
 export interface FlightSearchResult {
   id: string;
   airlineCode: string;

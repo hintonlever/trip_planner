@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { flightsRouter } from './routes/flights.js';
+import { cacheRouter } from './routes/cache.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/flights', flightsRouter);
+app.use('/api/cache', cacheRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

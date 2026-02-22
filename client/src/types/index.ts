@@ -13,6 +13,7 @@ export type {
 export type {
   FlightSearchParams,
   FlightSearchResult,
+  CachedQuery,
 } from './flight';
 
 export type {

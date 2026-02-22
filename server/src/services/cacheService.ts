@@ -70,39 +70,66 @@ export function getCachedResults(params: FlightSearchParams): FlightSearchResult
   if (!query) return null;
 
   const rows = db.prepare('SELECT * FROM results WHERE query_id = ?').all(query.id) as Array<Record<string, unknown>>;
+  return rows.map(mapRowToResult);
+}
 
-  return rows.map((row) => {
-    const result: FlightSearchResult = {
-      id: row.offer_id as string,
-      airlineCode: row.airline_code as string,
-      airlineName: row.airline_name as string,
-      flightNumber: row.flight_number as string,
-      origin: row.origin as string,
-      destination: row.destination as string,
-      departureAt: row.departure_at as string,
-      arrivalAt: row.arrival_at as string,
-      duration: row.duration as string,
-      stops: row.stops as number,
-      stopCodes: JSON.parse(row.stop_codes as string) as string[],
-      totalPrice: row.total_price as number,
-      pricePerPerson: row.price_per_person as number,
-      currency: row.currency as string,
-      cabin: row.cabin as string,
-    };
+function mapRowToResult(row: Record<string, unknown>): FlightSearchResult {
+  const result: FlightSearchResult = {
+    id: row.offer_id as string,
+    airlineCode: row.airline_code as string,
+    airlineName: row.airline_name as string,
+    flightNumber: row.flight_number as string,
+    origin: row.origin as string,
+    destination: row.destination as string,
+    departureAt: row.departure_at as string,
+    arrivalAt: row.arrival_at as string,
+    duration: row.duration as string,
+    stops: row.stops as number,
+    stopCodes: JSON.parse(row.stop_codes as string) as string[],
+    totalPrice: row.total_price as number,
+    pricePerPerson: row.price_per_person as number,
+    currency: row.currency as string,
+    cabin: row.cabin as string,
+  };
 
-    if (row.return_departure_at) {
-      result.returnDepartureAt = row.return_departure_at as string;
-      result.returnArrivalAt = row.return_arrival_at as string;
-      result.returnDuration = row.return_duration as string;
-      result.returnStops = row.return_stops as number;
-      result.returnFlightNumber = row.return_flight_number as string;
-      result.returnOrigin = row.return_origin as string;
-      result.returnDestination = row.return_destination as string;
-      result.returnStopCodes = JSON.parse(row.return_stop_codes as string) as string[];
-    }
+  if (row.return_departure_at) {
+    result.returnDepartureAt = row.return_departure_at as string;
+    result.returnArrivalAt = row.return_arrival_at as string;
+    result.returnDuration = row.return_duration as string;
+    result.returnStops = row.return_stops as number;
+    result.returnFlightNumber = row.return_flight_number as string;
+    result.returnOrigin = row.return_origin as string;
+    result.returnDestination = row.return_destination as string;
+    result.returnStopCodes = JSON.parse(row.return_stop_codes as string) as string[];
+  }
 
-    return result;
-  });
+  return result;
+}
+
+export function getAllQueries() {
+  return db.prepare(`
+    SELECT q.*, COUNT(r.id) AS result_count
+    FROM queries q
+    LEFT JOIN results r ON r.query_id = q.id
+    GROUP BY q.id
+    ORDER BY q.created_at DESC
+  `).all() as Array<{
+    id: number;
+    origin: string;
+    destination: string;
+    departure_date: string;
+    return_date: string | null;
+    adults: number;
+    non_stop: number;
+    currency: string;
+    created_at: string;
+    result_count: number;
+  }>;
+}
+
+export function getResultsByQueryId(queryId: number): FlightSearchResult[] {
+  const rows = db.prepare('SELECT * FROM results WHERE query_id = ?').all(queryId) as Array<Record<string, unknown>>;
+  return rows.map(mapRowToResult);
 }
 
 export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[]) => {
