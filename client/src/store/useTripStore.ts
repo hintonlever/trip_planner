@@ -10,12 +10,14 @@ interface TripState {
   currentTripId: number | null;
 }
 
+type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
+
 interface TripActions {
   setTripName: (name: string) => void;
   addColumn: (name: string) => string;
   removeColumn: (columnId: string) => void;
   renameColumn: (columnId: string, name: string) => void;
-  addItem: (columnId: string, item: Omit<CostItem, 'id' | 'columnId'>) => void;
+  addItem: (columnId: string, item: DistributiveOmit<CostItem, 'id' | 'columnId'>) => void;
   removeItem: (itemId: string) => void;
   updateItem: (itemId: string, updates: Partial<CostItem>) => void;
   moveItem: (itemId: string, toColumnId: string, newIndex: number) => void;

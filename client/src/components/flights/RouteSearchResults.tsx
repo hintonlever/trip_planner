@@ -152,8 +152,8 @@ export function RouteSearchResults({ dayResults, passengers }: RouteSearchResult
               />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip
-                formatter={(value: number) => [formatCurrency(value), 'Cheapest']}
-                labelFormatter={(label: string) => label}
+                formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Cheapest']}
+                labelFormatter={(label: React.ReactNode) => String(label)}
               />
               <Bar dataKey="price" radius={[4, 4, 0, 0]} onClick={handleBarClick} cursor="pointer">
                 {chartData.map((entry, idx) => (

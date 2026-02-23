@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Plus } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { useTripStore } from '../../store/useTripStore';
 
 export function HotelForm() {

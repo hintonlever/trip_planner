@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Loader2, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { getQualifyingDates } from '../../utils/dateRange';
 import type { RouteSearchParams } from '../../types';
 

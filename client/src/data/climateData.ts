@@ -1,4 +1,4 @@
-import type { CityClimate, MonthlyClimate } from '../types/weather';
+import type { CityClimate } from '../types/weather';
 
 // Monthly climate normals for major travel destinations
 // Data: 30-year averages from public meteorological sources (WMO/NOAA)

@@ -11,7 +11,7 @@ export function ComparisonBar() {
     return columnOrder.map((colId) => ({
       columnId: colId,
       name: columns[colId]?.name ?? '',
-      total: selectColumnTotal({ columns, items, columnOrder, tripName: '' }, colId),
+      total: selectColumnTotal({ columns, items, columnOrder, tripName: '', currentTripId: null }, colId),
     }));
   }, [columnOrder, columns, items]);
 

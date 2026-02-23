@@ -34,6 +34,7 @@ export async function searchFlightsForRouteSearch(
     destination: params.destination,
     departureDate: params.departureDate,
     adults: String(params.adults),
+    fresh: 'true',
     routeSearchId,
   });
 
