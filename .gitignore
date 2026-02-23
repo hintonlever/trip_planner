@@ -3,3 +3,5 @@ dist
 .env
 *.local
 cache.db
+cache.db-wal
+cache.db-shm
