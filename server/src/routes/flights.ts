@@ -28,7 +28,7 @@ flightsRouter.get('/search', async (req, res) => {
       adults: Number(adults),
       currency: currency ? String(currency) : undefined,
       returnDate: returnDate ? String(returnDate) : undefined,
-    }, fresh === 'true', routeSearchId ? String(routeSearchId) : undefined);
+    }, fresh === 'true', routeSearchId ? String(routeSearchId) : undefined, req.user?.id);
 
     res.json({ results });
   } catch (err) {

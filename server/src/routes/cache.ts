@@ -3,9 +3,12 @@ import { getAllQueries, getResultsByQueryId, searchCachedResults, getRouteSearch
 
 export const cacheRouter = Router();
 
-cacheRouter.get('/queries', (_req, res) => {
+cacheRouter.get('/queries', (req, res) => {
   try {
-    const queries = getAllQueries();
+    // Admin can pass ?all=true to see all users' queries
+    const showAll = req.query.all === 'true' && req.user?.is_admin === 1;
+    const userId = showAll ? undefined : req.user!.id;
+    const queries = getAllQueries(userId);
     res.json({ queries });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -25,7 +28,9 @@ cacheRouter.get('/search', (req, res) => {
       return;
     }
 
-    const results = searchCachedResults({ origin, destination, departureDate });
+    const showAll = req.query.all === 'true' && req.user?.is_admin === 1;
+    const userId = showAll ? undefined : req.user!.id;
+    const results = searchCachedResults({ origin, destination, departureDate }, userId);
     res.json({ results });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -54,7 +59,9 @@ cacheRouter.get('/queries/:id/results', (req, res) => {
 cacheRouter.get('/route-search/:id', (req, res) => {
   try {
     const routeSearchId = req.params.id;
-    const results = getRouteSearchResults(routeSearchId);
+    const showAll = req.query.all === 'true' && req.user?.is_admin === 1;
+    const userId = showAll ? undefined : req.user!.id;
+    const results = getRouteSearchResults(routeSearchId, userId);
     res.json({ results });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';

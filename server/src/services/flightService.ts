@@ -119,7 +119,7 @@ function minutesToIsoDuration(minutes: number): string {
   return `PT${h}H${m}M`;
 }
 
-export async function searchFlightsWithCache(params: FlightSearchParams, fresh = false, routeSearchId?: string): Promise<FlightSearchResult[]> {
+export async function searchFlightsWithCache(params: FlightSearchParams, fresh = false, routeSearchId?: string, userId?: number): Promise<FlightSearchResult[]> {
   if (!fresh) {
     const cached = getCachedResults(params);
     if (cached) {
@@ -129,7 +129,7 @@ export async function searchFlightsWithCache(params: FlightSearchParams, fresh =
   }
 
   const results = await searchFlights(params);
-  cacheResults(params, results, routeSearchId);
+  cacheResults(params, results, routeSearchId, userId);
   console.log(`Cached ${results.length} results for ${params.origin} -> ${params.destination}`);
   return results;
 }

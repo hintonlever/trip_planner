@@ -18,6 +18,8 @@ export type {
   CacheSearchResult,
   RouteSearchParams,
   RouteSearchDayResult,
+  ScatterSearchParams,
+  ScatterSearchRouteResult,
 } from './flight';
 
 export type {

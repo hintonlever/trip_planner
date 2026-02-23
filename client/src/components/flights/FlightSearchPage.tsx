@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Search, Loader2, BarChart3 } from 'lucide-react';
+import { Search, Loader2, BarChart3, Grid3x3 } from 'lucide-react';
 import { searchFlights } from '../../services/flightService';
 import type { FlightSearchResult } from '../../types';
 import { FlightResultsTable } from './FlightResultsTable';
 import { RouteSearchPanel } from './RouteSearchPanel';
+import { ScatterSearchPanel } from './ScatterSearchPanel';
 
-type SearchMode = 'specific' | 'route';
+type SearchMode = 'specific' | 'route' | 'scatter';
 
 export function FlightSearchPage() {
   const [searchMode, setSearchMode] = useState<SearchMode>('specific');
@@ -36,10 +37,22 @@ export function FlightSearchPage() {
           <BarChart3 className="w-3.5 h-3.5" />
           Route Search
         </button>
+        <button
+          onClick={() => setSearchMode('scatter')}
+          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md transition-colors ${
+            searchMode === 'scatter'
+              ? 'bg-blue-50 text-blue-700 font-medium'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <Grid3x3 className="w-3.5 h-3.5" />
+          Scatter Search
+        </button>
       </div>
 
       {searchMode === 'specific' && <SpecificSearchPanel />}
       {searchMode === 'route' && <RouteSearchPanel />}
+      {searchMode === 'scatter' && <ScatterSearchPanel />}
     </div>
   );
 }

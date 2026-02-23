@@ -14,7 +14,7 @@ export async function searchFlights(
   if (params.currency) query.set('currency', params.currency);
   if (params.returnDate) query.set('returnDate', params.returnDate);
 
-  const response = await fetch(`/api/flights/search?${query}`);
+  const response = await fetch(`/api/flights/search?${query}`, { credentials: 'include' });
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { error?: string };
@@ -39,7 +39,7 @@ export async function searchFlightsForRouteSearch(
 
   if (params.currency) query.set('currency', params.currency);
 
-  const response = await fetch(`/api/flights/search?${query}`);
+  const response = await fetch(`/api/flights/search?${query}`, { credentials: 'include' });
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { error?: string };

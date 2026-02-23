@@ -7,6 +7,7 @@ interface TripState {
   columns: Record<string, DestinationColumn>;
   columnOrder: string[];
   items: Record<string, CostItem>;
+  currentTripId: number | null;
 }
 
 interface TripActions {
@@ -19,7 +20,8 @@ interface TripActions {
   updateItem: (itemId: string, updates: Partial<CostItem>) => void;
   moveItem: (itemId: string, toColumnId: string, newIndex: number) => void;
   reorderInColumn: (columnId: string, oldIndex: number, newIndex: number) => void;
-  loadState: (state: TripState) => void;
+  setCurrentTripId: (id: number | null) => void;
+  loadState: (state: TripState, tripId?: number) => void;
   clearTrip: () => void;
 }
 
@@ -28,6 +30,7 @@ const initialState: TripState = {
   columns: {},
   columnOrder: [],
   items: {},
+  currentTripId: null,
 };
 
 export const useTripStore = create<TripState & TripActions>((set) => ({
@@ -155,12 +158,15 @@ export const useTripStore = create<TripState & TripActions>((set) => ({
       };
     }),
 
-  loadState: (saved) =>
+  setCurrentTripId: (id) => set({ currentTripId: id }),
+
+  loadState: (saved, tripId?) =>
     set({
       tripName: saved.tripName,
       columns: saved.columns,
       columnOrder: saved.columnOrder,
       items: saved.items,
+      currentTripId: tripId ?? null,
     }),
 
   clearTrip: () => set({ ...initialState }),

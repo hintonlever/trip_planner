@@ -58,6 +58,25 @@ export interface RouteSearchDayResult {
   error?: string;
 }
 
+export interface ScatterSearchParams {
+  origins: string[];
+  destinations: string[];
+  departureDate: string;
+  adults: number;
+  nonStop?: boolean;
+  currency?: string;
+}
+
+export interface ScatterSearchRouteResult {
+  origin: string;
+  destination: string;
+  results: FlightSearchResult[];
+  cheapest: FlightSearchResult | null;
+  cheapestPrice: number | null;
+  status: 'pending' | 'loading' | 'done' | 'error';
+  error?: string;
+}
+
 export interface FlightSearchResult {
   id: string;
   airlineCode: string;

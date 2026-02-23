@@ -1,6 +1,8 @@
-import { MapPin, Save, Trash2, Plane, Search, History } from 'lucide-react';
+import { MapPin, Save, Trash2, Plane, Search, History, LogOut } from 'lucide-react';
 import { useTripStore } from '../../store/useTripStore';
-import { saveToStorage, clearStorage } from '../../services/persistenceService';
+import { useAuthStore } from '../../store/useAuthStore';
+import { logout } from '../../services/authService';
+import { updateTrip, createTrip } from '../../services/tripService';
 
 export type Tab = 'planner' | 'search' | 'queries';
 
@@ -19,22 +21,42 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
   const tripName = useTripStore((s) => s.tripName);
   const setTripName = useTripStore((s) => s.setTripName);
   const clearTrip = useTripStore((s) => s.clearTrip);
+  const user = useAuthStore((s) => s.user);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const state = useTripStore.getState();
-    saveToStorage({
-      tripName: state.tripName,
-      columns: state.columns,
-      columnOrder: state.columnOrder,
-      items: state.items,
-    });
+    try {
+      if (state.currentTripId) {
+        await updateTrip(state.currentTripId, {
+          tripName: state.tripName,
+          columns: state.columns,
+          columnOrder: state.columnOrder,
+          items: state.items,
+        });
+      } else {
+        const id = await createTrip({
+          tripName: state.tripName,
+          columns: state.columns,
+          columnOrder: state.columnOrder,
+          items: state.items,
+        });
+        useTripStore.getState().setCurrentTripId(id);
+      }
+    } catch (err) {
+      console.error('Save failed:', err);
+    }
   };
 
   const handleClear = () => {
     if (confirm('Clear all trip data? This cannot be undone.')) {
       clearTrip();
-      clearStorage();
     }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    useAuthStore.getState().clearAuth();
+    window.location.reload();
   };
 
   return (
@@ -68,6 +90,27 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
             <Trash2 className="w-3.5 h-3.5" />
             Clear
           </button>
+
+          {user && (
+            <div className="flex items-center gap-2 ml-2 pl-3 border-l border-gray-200">
+              {user.picture && (
+                <img
+                  src={user.picture}
+                  alt=""
+                  className="w-7 h-7 rounded-full"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+              <span className="text-xs text-gray-600 max-w-24 truncate">{user.name}</span>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 px-1.5 py-1 rounded hover:bg-gray-50"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

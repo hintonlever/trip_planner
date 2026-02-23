@@ -1,7 +1,8 @@
 import type { CachedQuery, FlightSearchResult, CacheSearchResult } from '../types';
 
-export async function fetchCachedQueries(): Promise<CachedQuery[]> {
-  const response = await fetch('/api/cache/queries');
+export async function fetchCachedQueries(showAll = false): Promise<CachedQuery[]> {
+  const url = showAll ? '/api/cache/queries?all=true' : '/api/cache/queries';
+  const response = await fetch(url, { credentials: 'include' });
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { error?: string };
@@ -16,13 +17,14 @@ export async function searchCachedFlights(filters: {
   origin?: string;
   destination?: string;
   departureDate?: string;
-}): Promise<CacheSearchResult[]> {
+}, showAll = false): Promise<CacheSearchResult[]> {
   const params = new URLSearchParams();
   if (filters.origin) params.set('origin', filters.origin);
   if (filters.destination) params.set('destination', filters.destination);
   if (filters.departureDate) params.set('departureDate', filters.departureDate);
+  if (showAll) params.set('all', 'true');
 
-  const response = await fetch(`/api/cache/search?${params}`);
+  const response = await fetch(`/api/cache/search?${params}`, { credentials: 'include' });
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { error?: string };
@@ -34,7 +36,7 @@ export async function searchCachedFlights(filters: {
 }
 
 export async function fetchCachedResults(queryId: number): Promise<FlightSearchResult[]> {
-  const response = await fetch(`/api/cache/queries/${queryId}/results`);
+  const response = await fetch(`/api/cache/queries/${queryId}/results`, { credentials: 'include' });
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { error?: string };
@@ -46,7 +48,7 @@ export async function fetchCachedResults(queryId: number): Promise<FlightSearchR
 }
 
 export async function fetchRouteSearchResults(routeSearchId: string): Promise<(FlightSearchResult & { departureDate: string })[]> {
-  const response = await fetch(`/api/cache/route-search/${routeSearchId}`);
+  const response = await fetch(`/api/cache/route-search/${routeSearchId}`, { credentials: 'include' });
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { error?: string };

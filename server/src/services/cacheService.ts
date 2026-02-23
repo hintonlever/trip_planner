@@ -1,12 +1,5 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import db from './database.js';
 import type { FlightSearchParams, FlightSearchResult, FlightSegment } from './flightService.js';
-
-const dbPath = path.join(__dirname, '..', '..', 'cache.db');
-const db = new Database(dbPath);
-
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS queries (
@@ -114,14 +107,17 @@ function mapRowToResult(row: Record<string, unknown>): FlightSearchResult {
   return result;
 }
 
-export function getAllQueries() {
+export function getAllQueries(userId?: number) {
+  const where = userId != null ? 'WHERE q.user_id = ?' : '';
+  const params = userId != null ? [userId] : [];
   return db.prepare(`
     SELECT q.*, COUNT(r.id) AS result_count
     FROM queries q
     LEFT JOIN results r ON r.query_id = q.id
+    ${where}
     GROUP BY q.id
     ORDER BY q.created_at DESC
-  `).all() as Array<{
+  `).all(...params) as Array<{
     id: number;
     origin: string;
     destination: string;
@@ -132,6 +128,7 @@ export function getAllQueries() {
     currency: string;
     created_at: string;
     result_count: number;
+    user_id: number | null;
   }>;
 }
 
@@ -146,10 +143,14 @@ export interface CacheSearchFilters {
   departureDate?: string;
 }
 
-export function searchCachedResults(filters: CacheSearchFilters) {
+export function searchCachedResults(filters: CacheSearchFilters, userId?: number) {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
+  if (userId != null) {
+    conditions.push('q.user_id = ?');
+    params.push(userId);
+  }
   if (filters.origin) {
     conditions.push('UPPER(r.origin) = ?');
     params.push(filters.origin.toUpperCase().trim());
@@ -180,7 +181,7 @@ export function searchCachedResults(filters: CacheSearchFilters) {
   }));
 }
 
-export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[], routeSearchId?: string) => {
+export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[], routeSearchId?: string, userId?: number) => {
   const key = buildCacheKey(params);
 
   // Delete old cached entry if it exists (for fresh refreshes)
@@ -190,8 +191,8 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
   }
 
   const info = db.prepare(`
-    INSERT INTO queries (origin, destination, departure_date, return_date, adults, non_stop, currency, cache_key, created_at, route_search_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO queries (origin, destination, departure_date, return_date, adults, non_stop, currency, cache_key, created_at, route_search_id, user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     params.origin.toUpperCase().trim(),
     params.destination.toUpperCase().trim(),
@@ -203,6 +204,7 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
     key,
     new Date().toISOString(),
     routeSearchId || null,
+    userId || null,
   );
 
   const queryId = info.lastInsertRowid;
@@ -250,14 +252,20 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
   }
 });
 
-export function getRouteSearchResults(routeSearchId: string) {
+export function getRouteSearchResults(routeSearchId: string, userId?: number) {
+  const conditions = ['q.route_search_id = ?'];
+  const params: unknown[] = [routeSearchId];
+  if (userId != null) {
+    conditions.push('q.user_id = ?');
+    params.push(userId);
+  }
   const rows = db.prepare(`
     SELECT r.*, q.departure_date, q.created_at AS query_cached_at
     FROM results r
     JOIN queries q ON q.id = r.query_id
-    WHERE q.route_search_id = ?
+    WHERE ${conditions.join(' AND ')}
     ORDER BY q.departure_date ASC, r.total_price ASC
-  `).all(routeSearchId) as Array<Record<string, unknown>>;
+  `).all(...params) as Array<Record<string, unknown>>;
 
   return rows.map((row) => ({
     ...mapRowToResult(row),

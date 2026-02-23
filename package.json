@@ -1,0 +1,8 @@
+{
+  "name": "trip-planner",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install && npm run build && cd ../server && npm install && npm run build",
+    "start": "cd server && node dist/index.js"
+  }
+}

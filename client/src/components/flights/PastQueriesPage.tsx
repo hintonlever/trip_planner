@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
-import { ChevronDown, RefreshCw, Loader2, Plane, Search } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronDown, RefreshCw, Loader2, Plane, Search, Users } from 'lucide-react';
 import { fetchCachedQueries, fetchCachedResults, searchCachedFlights } from '../../services/cacheService';
 import type { CachedQuery, FlightSearchResult, CacheSearchResult } from '../../types';
 import { FlightResultsTable } from './FlightResultsTable';
+import { useAuthStore } from '../../store/useAuthStore';
 
 type ViewMode = 'queries' | 'search';
 
 export function PastQueriesPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('queries');
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const [showAllUsers, setShowAllUsers] = useState(false);
 
   // Query list state
   const [queries, setQueries] = useState<CachedQuery[]>([]);
@@ -26,20 +29,20 @@ export function PastQueriesPage() {
   const [searchError, setSearchError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  const loadQueries = async () => {
+  const loadQueries = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchCachedQueries();
+      const data = await fetchCachedQueries(showAllUsers && isAdmin);
       setQueries(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load queries');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showAllUsers, isAdmin]);
 
-  useEffect(() => { loadQueries(); }, []);
+  useEffect(() => { loadQueries(); }, [loadQueries]);
 
   const toggleExpand = async (queryId: number) => {
     if (expandedId === queryId) {
@@ -76,7 +79,7 @@ export function PastQueriesPage() {
         origin: origin || undefined,
         destination: destination || undefined,
         departureDate: departureDate || undefined,
-      });
+      }, showAllUsers && isAdmin);
       setSearchResults(results);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
@@ -143,6 +146,19 @@ export function PastQueriesPage() {
 
         {viewMode === 'queries' && (
           <div className="ml-auto flex items-center gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => setShowAllUsers((v) => !v)}
+                className={`flex items-center gap-1.5 text-xs px-2 py-1.5 rounded ${
+                  showAllUsers
+                    ? 'bg-purple-100 text-purple-700 font-medium'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                All Users
+              </button>
+            )}
             <span className="text-sm text-gray-500">
               {queries.length} cached quer{queries.length !== 1 ? 'ies' : 'y'}
             </span>
