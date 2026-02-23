@@ -3,7 +3,7 @@ library(RSQLite)
 library(jsonlite)
 library(dplyr)
 library(tidyr)
-
+print("Hello")
 # ── Connect to the cache database ──────────────────────────────────────────────
 db_path <- file.path(dirname(rstudioapi::getSourceEditorContext()$path), "server", "cache.db")
 if (!file.exists(db_path)) {
