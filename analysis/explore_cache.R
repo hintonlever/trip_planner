@@ -3,13 +3,13 @@ library(RSQLite)
 library(jsonlite)
 library(dplyr)
 library(tidyr)
+library(rstudioapi)
+library(tidyverse)
+
 print("Hello")
 # ── Connect to the cache database ──────────────────────────────────────────────
-db_path <- file.path(dirname(rstudioapi::getSourceEditorContext()$path), "server", "cache.db")
-if (!file.exists(db_path)) {
-  # Fallback: try relative to working directory
-  db_path <- "server/cache.db"
-}
+db_path <- "server/cache.db"
+
 cat("Connecting to:", db_path, "\n")
 con <- dbConnect(SQLite(), db_path)
 
@@ -30,14 +30,14 @@ queries <- dbGetQuery(con, "
 cat("\n=== Cached Queries ===\n")
 cat("Total queries:", nrow(queries), "\n\n")
 
-queries_display <- queries |>
+queries_display <- queries %>%
   mutate(
     route = paste(origin, "->", destination),
     cached_at = format(as.POSIXct(created_at, tz = "UTC"), "%Y-%m-%d %H:%M")
-  ) |>
+  ) %>%
   select(id, route, departure_date, return_date, adults, currency, result_count, cached_at, route_search_id)
 
-print(queries_display, n = 50)
+head(queries_display)
 
 # ── Results table ──────────────────────────────────────────────────────────────
 results <- dbGetQuery(con, "
@@ -53,9 +53,9 @@ cat("Total result rows:", nrow(results), "\n\n")
 
 # ── Summary by route ──────────────────────────────────────────────────────────
 if (nrow(results) > 0) {
-  route_summary <- results |>
-    mutate(route = paste(origin, "->", destination)) |>
-    group_by(route) |>
+  route_summary <- results %>%
+    mutate(route = paste(origin, "->", destination)) %>%
+    group_by(route) %>%
     summarise(
       n_results = n(),
       min_price = min(total_price),
@@ -66,39 +66,39 @@ if (nrow(results) > 0) {
       n_2plus = sum(stops >= 2),
       airlines = paste(sort(unique(airline_code)), collapse = ", "),
       .groups = "drop"
-    ) |>
+    ) %>%
     arrange(route)
 
   cat("\n=== Route Summary ===\n")
   print(route_summary, n = 50, width = 200)
 
   # ── Price distribution by stops ────────────────────────────────────────────
-  price_by_stops <- results |>
-    mutate(route = paste(origin, "->", destination)) |>
-    group_by(route, stops) |>
+  price_by_stops <- results %>%
+    mutate(route = paste(origin, "->", destination)) %>%
+    group_by(route, stops) %>%
     summarise(
       n = n(),
       min_price = min(total_price),
       median_price = median(total_price),
       max_price = max(total_price),
       .groups = "drop"
-    ) |>
+    ) %>%
     arrange(route, stops)
 
   cat("\n=== Price by Stop Count ===\n")
   print(price_by_stops, n = 100)
 
   # ── Airline breakdown ──────────────────────────────────────────────────────
-  airline_summary <- results |>
-    mutate(route = paste(origin, "->", destination)) |>
-    group_by(route, airline_code, airline_name) |>
+  airline_summary <- results %>%
+    mutate(route = paste(origin, "->", destination)) %>%
+    group_by(route, airline_code, airline_name) %>%
     summarise(
       n_flights = n(),
       min_price = min(total_price),
       median_price = median(total_price),
       n_direct = sum(stops == 0),
       .groups = "drop"
-    ) |>
+    ) %>%
     arrange(route, min_price)
 
   cat("\n=== Airline Breakdown ===\n")
@@ -179,10 +179,10 @@ browse_route <- function(origin_code, dest_code, dep_date = NULL) {
 
   cat(sprintf("\n=== %s -> %s  (%d results) ===\n\n", origin_code, dest_code, nrow(rows)))
 
-  display <- rows |>
+  display <- rows %>%
     select(offer_id, airline_code, flight_number, origin, destination,
            departure_at, arrival_at, duration, stops, stop_codes,
-           total_price, currency) |>
+           total_price, currency) %>%
     mutate(
       dep_time = format(as.POSIXct(departure_at), "%H:%M"),
       arr_time = format(as.POSIXct(arrival_at), "%H:%M")
