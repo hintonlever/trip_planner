@@ -10,3 +10,6 @@ cache.db-shm
 
 # OS
 .DS_Store
+
+# Private docs
+hidden_docs/
