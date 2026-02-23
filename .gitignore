@@ -2,6 +2,11 @@ node_modules
 dist
 .env
 *.local
+
+# SQLite
 cache.db
 cache.db-wal
 cache.db-shm
+
+# OS
+.DS_Store
