@@ -30,6 +30,16 @@ authRouter.post('/google', async (req, res) => {
       return;
     }
 
+    // Optional allowlist: set ALLOWED_EMAILS="a@gmail.com,b@gmail.com" to restrict access
+    const allowedEmails = process.env.ALLOWED_EMAILS;
+    if (allowedEmails) {
+      const allowed = allowedEmails.split(',').map(e => e.trim().toLowerCase());
+      if (!allowed.includes(payload.email.toLowerCase())) {
+        res.status(403).json({ error: 'Access denied. Your account is not on the allowlist.' });
+        return;
+      }
+    }
+
     const user = findOrCreateUser(
       payload.sub,
       payload.email,

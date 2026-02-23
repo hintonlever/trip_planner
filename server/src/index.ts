@@ -15,9 +15,14 @@ import { tripsRouter } from './routes/trips.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isProd = process.env.NODE_ENV === 'production';
 
-if (process.env.NODE_ENV !== 'production') {
+if (!isProd) {
   app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+}
+
+if (isProd) {
+  app.set('trust proxy', 1);
 }
 
 app.use(express.json());
@@ -29,7 +34,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false,
+    secure: isProd,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     sameSite: 'lax',
   },
@@ -49,7 +54,7 @@ app.use('/api/cache', requireAuth, cacheRouter);
 app.use('/api/trips', requireAuth, tripsRouter);
 
 // In production, serve the React client build
-if (process.env.NODE_ENV === 'production') {
+if (isProd) {
   const clientDist = path.join(__dirname, '../../client/dist');
   app.use(express.static(clientDist));
 
