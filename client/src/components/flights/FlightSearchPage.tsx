@@ -11,7 +11,7 @@ export function FlightSearchPage() {
   const [searchMode, setSearchMode] = useState<SearchMode>('specific');
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-auto">
       {/* Sub-tab navigation */}
       <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-2">
         <button
@@ -85,10 +85,10 @@ function SpecificSearchPanel() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-auto">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <form onSubmit={handleSearch} className="flex items-end gap-3 flex-wrap">
-          <div className="flex rounded-md overflow-hidden border border-gray-300 text-sm">
+          <div className="flex rounded-md overflow-auto border border-gray-300 text-sm">
             <button
               type="button"
               onClick={() => setTripType('oneway')}
@@ -211,7 +211,7 @@ function SpecificSearchPanel() {
       </div>
 
       {results.length > 0 && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-auto">
           <div className="px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
             {displayResults.length} result{displayResults.length !== 1 ? 's' : ''} found
             {nonStop && displayResults.length !== results.length && (

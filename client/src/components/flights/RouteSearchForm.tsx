@@ -3,7 +3,9 @@ import { Search, Loader2, X } from 'lucide-react';
 import { getQualifyingDates } from '../../utils/dateRange';
 import type { RouteSearchParams } from '../../types';
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// getDay() values: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=0
+const DAY_VALUES = [1, 2, 3, 4, 5, 6, 0];
 
 interface RouteSearchFormProps {
   onSearch: (params: RouteSearchParams) => void;
@@ -16,7 +18,7 @@ export function RouteSearchForm({ onSearch, onCancel, isRunning }: RouteSearchFo
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [daysOfWeek, setDaysOfWeek] = useState([0, 1, 2, 3, 4, 5, 6]);
+  const [daysOfWeek, setDaysOfWeek] = useState([1, 2, 3, 4, 5, 6, 0]);
   const [adults, setAdults] = useState(1);
   const [currency, setCurrency] = useState('AUD');
   const [nonStop, setNonStop] = useState(false);
@@ -166,8 +168,8 @@ export function RouteSearchForm({ onSearch, onCancel, isRunning }: RouteSearchFo
               <label key={i} className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={daysOfWeek.includes(i)}
-                  onChange={() => toggleDay(i)}
+                  checked={daysOfWeek.includes(DAY_VALUES[i])}
+                  onChange={() => toggleDay(DAY_VALUES[i])}
                   disabled={isRunning}
                   className="rounded"
                 />

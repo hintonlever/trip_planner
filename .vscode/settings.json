@@ -1,0 +1,5 @@
+{
+  "r.rterm.mac": "/Library/Frameworks/R.framework/Resources/bin/R",
+  "r.plot.useHttpgd": true,
+  "r.bracketedPaste": true
+}

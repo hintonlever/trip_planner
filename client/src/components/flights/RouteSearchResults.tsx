@@ -70,6 +70,12 @@ export function RouteSearchResults({ dayResults, passengers }: RouteSearchResult
     ? filteredDayResults.find((d) => d.date === selectedDate)
     : null;
 
+  const allFilteredResults = useMemo(() => {
+    return filteredDayResults
+      .filter((d) => d.status === 'done' && d.filteredResults && d.filteredResults.length > 0)
+      .flatMap((d) => d.filteredResults!);
+  }, [filteredDayResults]);
+
   const handleBarClick = (_data: unknown, index: number) => {
     const entry = chartData[index];
     if (entry) {
@@ -78,7 +84,7 @@ export function RouteSearchResults({ dayResults, passengers }: RouteSearchResult
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-auto">
       {/* Filters bar */}
       <div className="px-6 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-4 flex-wrap">
         <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
@@ -169,9 +175,9 @@ export function RouteSearchResults({ dayResults, passengers }: RouteSearchResult
         </div>
       )}
 
-      {/* Selected date detail */}
+      {/* Results table */}
       {selectedDayData && selectedDayData.filteredResults && selectedDayData.filteredResults.length > 0 && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-col min-h-0">
           <div className="px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
             {selectedDayData.filteredResults.length} flight{selectedDayData.filteredResults.length !== 1 ? 's' : ''} on {formatDateLabel(selectedDate!)}
           </div>
@@ -185,9 +191,12 @@ export function RouteSearchResults({ dayResults, passengers }: RouteSearchResult
         </div>
       )}
 
-      {!selectedDate && chartData.length > 0 && (
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-          Click a bar to see flights for that date
+      {!selectedDate && allFilteredResults.length > 0 && (
+        <div className="flex flex-col min-h-0">
+          <div className="px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
+            {allFilteredResults.length} flight{allFilteredResults.length !== 1 ? 's' : ''} across all dates
+          </div>
+          <FlightResultsTable results={allFilteredResults} passengers={passengers} />
         </div>
       )}
     </div>
