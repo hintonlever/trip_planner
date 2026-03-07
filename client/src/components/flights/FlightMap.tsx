@@ -1,8 +1,9 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { airports } from '../../data/airports';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { computeBezierArcSegments } from '../../utils/bezierArc';
 import type { FlightSearchResult } from '../../types';
 
 interface RouteSummary {
@@ -16,6 +17,8 @@ interface FlightMapProps {
   results: FlightSearchResult[];
   onRouteSelect?: (origin: string, destination: string) => void;
   selectedRoute?: { origin: string; destination: string } | null;
+  onAirportSelect?: (code: string | null) => void;
+  selectedAirport?: string | null;
 }
 
 function FitBounds({ points }: { points: { lat: number; lng: number }[] }) {
@@ -32,67 +35,74 @@ function FitBounds({ points }: { points: { lat: number; lng: number }[] }) {
   return null;
 }
 
-/**
- * Compute a great-circle arc between two points, correctly handling the antimeridian.
- * Returns an array of LatLngTuple with possible breaks for date-line crossing.
- */
-function computeGreatCircleArc(
-  start: [number, number],
-  end: [number, number],
-  numPoints = 50,
-): L.LatLngTuple[][] {
-  const [lat1, lng1] = start;
-  const [lat2, lng2] = end;
+const WORLD_OFFSETS = [-360, 0, 360];
 
-  // Determine shortest path direction across antimeridian
-  let dLng = lng2 - lng1;
-  if (dLng > 180) dLng -= 360;
-  if (dLng < -180) dLng += 360;
-  const effectiveEnd: [number, number] = [lat2, lng1 + dLng];
-
-  // Offset for curve (quadratic bezier feel)
-  const midLat = (lat1 + effectiveEnd[0]) / 2;
-  const midLng = (lng1 + effectiveEnd[1]) / 2;
-  const dLatC = effectiveEnd[0] - lat1;
-  const dLngC = effectiveEnd[1] - lng1;
-  const curvature = 0.25;
-  const ctrlLat = midLat + -dLngC * curvature;
-  const ctrlLng = midLng + dLatC * curvature;
-
-  const rawPoints: [number, number][] = [];
-  for (let i = 0; i <= numPoints; i++) {
-    const t = i / numPoints;
-    const u = 1 - t;
-    const lat = u * u * lat1 + 2 * u * t * ctrlLat + t * t * effectiveEnd[0];
-    const lng = u * u * lng1 + 2 * u * t * ctrlLng + t * t * effectiveEnd[1];
-    rawPoints.push([lat, lng]);
-  }
-
-  // Split into segments that don't cross the antimeridian
-  const segments: L.LatLngTuple[][] = [];
-  let current: L.LatLngTuple[] = [];
-
-  for (let i = 0; i < rawPoints.length; i++) {
-    const [lat, lng] = rawPoints[i];
-    // Normalize longitude to [-180, 180]
-    const normLng = ((lng + 540) % 360) - 180;
-
-    if (current.length > 0) {
-      const prevLng = current[current.length - 1][1];
-      // If jump > 180, we crossed the antimeridian — start new segment
-      if (Math.abs(normLng - prevLng) > 180) {
-        segments.push(current);
-        current = [];
-      }
-    }
-    current.push([lat, normLng]);
-  }
-  if (current.length > 0) segments.push(current);
-
-  return segments;
+function MapLegend({ priceRange }: { priceRange: { min: number; max: number } }) {
+  return (
+    <div
+      className="leaflet-bottom leaflet-left"
+      style={{ pointerEvents: 'none' }}
+    >
+      <div
+        className="leaflet-control"
+        style={{
+          pointerEvents: 'auto',
+          background: 'white',
+          borderRadius: 6,
+          padding: '8px 10px',
+          fontSize: 11,
+          lineHeight: '18px',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+          minWidth: 120,
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Legend</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#3B82F6', border: '2px solid #1E40AF', display: 'inline-block', flexShrink: 0 }} />
+          <span>Origin</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981', border: '2px solid #065F46', display: 'inline-block', flexShrink: 0 }} />
+          <span>Destination</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#D1D5DB', border: '1px solid #9CA3AF', display: 'inline-block', flexShrink: 0 }} />
+          <span>Stop</span>
+        </div>
+        {priceRange.max > 0 && (
+          <>
+            <div style={{ fontWeight: 600, marginTop: 6, marginBottom: 4 }}>Route price</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 16, height: 2, background: '#22C55E', display: 'inline-block', flexShrink: 0 }} />
+              <span>Cheap</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 16, height: 2, background: '#F59E0B', display: 'inline-block', flexShrink: 0 }} />
+              <span>Mid</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 16, height: 2, background: '#EF4444', display: 'inline-block', flexShrink: 0 }} />
+              <span>Expensive</span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
-export function FlightMap({ results, onRouteSelect, selectedRoute }: FlightMapProps) {
+export function FlightMap({ results, onRouteSelect, selectedRoute, onAirportSelect, selectedAirport: controlledAirport }: FlightMapProps) {
+  const [internalAirport, setInternalAirport] = useState<string | null>(null);
+  const selectedAirport = controlledAirport !== undefined ? controlledAirport : internalAirport;
+
+  const handleAirportClick = useCallback((code: string) => {
+    const next = selectedAirport === code ? null : code;
+    if (onAirportSelect) {
+      onAirportSelect(next);
+    } else {
+      setInternalAirport(next);
+    }
+  }, [selectedAirport, onAirportSelect]);
   // Build route summaries from results
   const routeSummaries = useMemo<RouteSummary[]>(() => {
     const routeMap = new Map<string, { prices: number[]; waypoints: Set<string> }>();
@@ -195,15 +205,18 @@ export function FlightMap({ results, onRouteSelect, selectedRoute }: FlightMapPr
         // Compute arcs between consecutive points
         const segments: L.LatLngTuple[][] = [];
         for (let i = 0; i < allPoints.length - 1; i++) {
-          const arcSegments = computeGreatCircleArc(allPoints[i], allPoints[i + 1]);
+          const arcSegments = computeBezierArcSegments(allPoints[i], allPoints[i + 1]);
           for (const seg of arcSegments) segments.push(seg);
         }
 
         const isSelected = selectedRoute?.origin === route.origin && selectedRoute?.destination === route.destination;
-        return { ...route, segments, isSelected };
+        const isAirportHighlighted = selectedAirport
+          ? route.origin === selectedAirport || route.destination === selectedAirport
+          : false;
+        return { ...route, segments, isSelected, isAirportHighlighted };
       })
-      .filter(Boolean) as (RouteSummary & { segments: L.LatLngTuple[][]; isSelected: boolean })[];
-  }, [routeSummaries, selectedRoute]);
+      .filter(Boolean) as (RouteSummary & { segments: L.LatLngTuple[][]; isSelected: boolean; isAirportHighlighted: boolean })[];
+  }, [routeSummaries, selectedRoute, selectedAirport]);
 
   if (uniqueAirports.length === 0) {
     return (
@@ -214,7 +227,7 @@ export function FlightMap({ results, onRouteSelect, selectedRoute }: FlightMapPr
   }
 
   return (
-    <div className="flex-1 min-h-[300px]">
+    <div className="flex-1 min-h-[300px] relative">
       <MapContainer
         center={[20, 0]}
         zoom={2}
@@ -227,92 +240,109 @@ export function FlightMap({ results, onRouteSelect, selectedRoute }: FlightMapPr
         />
         <FitBounds points={uniqueAirports} />
 
-        {/* Route arcs — dashed lines per spec */}
-        {routeArcs.map((route) => {
-          const color = getRouteColor(route.cheapestPrice);
-          return route.segments.map((seg, segIdx) => (
-            <Polyline
-              key={`${route.origin}-${route.destination}-${segIdx}`}
-              positions={seg}
-              pathOptions={{
-                color: route.isSelected ? '#2563EB' : color,
-                weight: route.isSelected ? 3.5 : 2,
-                opacity: route.isSelected ? 1 : 0.7,
-                dashArray: '8 4',
-              }}
-              eventHandlers={
-                onRouteSelect
-                  ? { click: () => onRouteSelect(route.origin, route.destination) }
-                  : undefined
-              }
-            >
-              <Tooltip sticky>
-                <span style={{ fontWeight: 600 }}>{route.origin} → {route.destination}</span>
-                {route.waypoints.length > 0 && (
-                  <><br /><span style={{ fontSize: 11, color: '#6b7280' }}>via {route.waypoints.join(', ')}</span></>
-                )}
-                <br />
-                {formatCurrency(route.cheapestPrice)}
-              </Tooltip>
-            </Polyline>
-          ));
-        })}
+        {/* Route arcs — repeated at world copy offsets */}
+        {WORLD_OFFSETS.map((lngOffset) =>
+          routeArcs.map((route) => {
+            const color = getRouteColor(route.cheapestPrice);
+            const highlighted = route.isSelected || route.isAirportHighlighted;
+            const dimmed = selectedAirport && !route.isAirportHighlighted;
+            return route.segments.map((seg, segIdx) => (
+              <Polyline
+                key={`${route.origin}-${route.destination}-${segIdx}-${lngOffset}`}
+                positions={seg.map(([lat, lng]) => [lat, lng + lngOffset] as L.LatLngTuple)}
+                pathOptions={{
+                  color: highlighted ? '#2563EB' : color,
+                  weight: highlighted ? 3.5 : 2,
+                  opacity: dimmed ? 0.2 : highlighted ? 1 : 0.7,
+                  dashArray: undefined,
+                }}
+                eventHandlers={
+                  onRouteSelect
+                    ? { click: () => onRouteSelect(route.origin, route.destination) }
+                    : undefined
+                }
+              >
+                <Tooltip sticky>
+                  <span style={{ fontWeight: 600 }}>{route.origin} → {route.destination}</span>
+                  {route.waypoints.length > 0 && (
+                    <><br /><span style={{ fontSize: 11, color: '#6b7280' }}>via {route.waypoints.join(', ')}</span></>
+                  )}
+                  <br />
+                  {formatCurrency(route.cheapestPrice)}
+                </Tooltip>
+              </Polyline>
+            ));
+          })
+        )}
 
-        {/* Waypoint markers (small gray) */}
-        {uniqueAirports
-          .filter((apt) => apt.isWaypoint)
-          .map((apt) => (
-            <CircleMarker
-              key={apt.code}
-              center={[apt.lat, apt.lng]}
-              radius={3}
-              pathOptions={{
-                color: '#9CA3AF',
-                fillColor: '#D1D5DB',
-                fillOpacity: 0.8,
-                weight: 1,
-              }}
-            >
-              <Tooltip direction="top" offset={[0, -4]}>
-                <span style={{ fontWeight: 600, fontSize: 11 }}>{apt.code}</span>
-                {apt.city && <> — {apt.city}</>}
-                <span style={{ color: '#9CA3AF' }}> (stop)</span>
-              </Tooltip>
-            </CircleMarker>
-          ))}
+        {/* Waypoint markers — repeated at world copy offsets */}
+        {WORLD_OFFSETS.map((lngOffset) =>
+          uniqueAirports
+            .filter((apt) => apt.isWaypoint)
+            .map((apt) => (
+              <CircleMarker
+                key={`${apt.code}-wp-${lngOffset}`}
+                center={[apt.lat, apt.lng + lngOffset]}
+                radius={3}
+                pathOptions={{
+                  color: '#9CA3AF',
+                  fillColor: '#D1D5DB',
+                  fillOpacity: 0.8,
+                  weight: 1,
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -4]}>
+                  <span style={{ fontWeight: 600, fontSize: 11 }}>{apt.code}</span>
+                  {apt.city && <> — {apt.city}</>}
+                  <span style={{ color: '#9CA3AF' }}> (stop)</span>
+                </Tooltip>
+              </CircleMarker>
+            ))
+        )}
 
-        {/* Origin & destination markers with price labels */}
-        {uniqueAirports
-          .filter((apt) => !apt.isWaypoint)
-          .map((apt) => (
-            <CircleMarker
-              key={apt.code}
-              center={[apt.lat, apt.lng]}
-              radius={5}
-              pathOptions={apt.isOrigin ? {
-                color: '#1E40AF',
-                fillColor: '#3B82F6',
-                fillOpacity: 1,
-                weight: 2,
-              } : {
-                color: '#065F46',
-                fillColor: '#10B981',
-                fillOpacity: 1,
-                weight: 2,
-              }}
-            >
-              <Tooltip direction="top" offset={[0, -6]} permanent={false}>
-                <span style={{ fontWeight: 600 }}>{apt.code}</span>
-                {apt.city && <> — {apt.city}</>}
-                {apt.cheapestPrice !== null && (
-                  <><br /><span style={{ color: '#059669', fontWeight: 500 }}>from {formatCurrency(apt.cheapestPrice)}</span></>
-                )}
-                {apt.isOrigin && apt.isDestination && <span style={{ color: '#6B7280' }}> (origin & dest)</span>}
-                {apt.isOrigin && !apt.isDestination && <span style={{ color: '#3B82F6' }}> (origin)</span>}
-                {!apt.isOrigin && apt.isDestination && <span style={{ color: '#10B981' }}> (destination)</span>}
-              </Tooltip>
-            </CircleMarker>
-          ))}
+        {/* Origin & destination markers — repeated at world copy offsets */}
+        {WORLD_OFFSETS.map((lngOffset) =>
+          uniqueAirports
+            .filter((apt) => !apt.isWaypoint)
+            .map((apt) => {
+              const isHighlighted = selectedAirport === apt.code;
+              return (
+                <CircleMarker
+                  key={`${apt.code}-${lngOffset}`}
+                  center={[apt.lat, apt.lng + lngOffset]}
+                  radius={isHighlighted ? 7 : 5}
+                  pathOptions={apt.isOrigin ? {
+                    color: isHighlighted ? '#1E3A8A' : '#1E40AF',
+                    fillColor: '#3B82F6',
+                    fillOpacity: 1,
+                    weight: isHighlighted ? 3 : 2,
+                  } : {
+                    color: isHighlighted ? '#064E3B' : '#065F46',
+                    fillColor: '#10B981',
+                    fillOpacity: 1,
+                    weight: isHighlighted ? 3 : 2,
+                  }}
+                  eventHandlers={{
+                    click: () => handleAirportClick(apt.code),
+                  }}
+                >
+                  <Tooltip
+                    direction="top"
+                    offset={[0, -6]}
+                    permanent
+                    className="price-label"
+                  >
+                    <span style={{ fontWeight: 600 }}>{apt.code}</span>
+                    {apt.cheapestPrice !== null && (
+                      <span style={{ color: '#059669', fontWeight: 500 }}> {formatCurrency(apt.cheapestPrice)}</span>
+                    )}
+                  </Tooltip>
+                </CircleMarker>
+              );
+            })
+        )}
+
+        <MapLegend priceRange={priceRange} />
       </MapContainer>
     </div>
   );

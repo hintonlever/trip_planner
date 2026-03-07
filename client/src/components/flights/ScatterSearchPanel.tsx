@@ -1,15 +1,12 @@
-import { useState } from 'react';
 import { ScatterSearchForm } from './ScatterSearchForm';
 import { ScatterSearchResults } from './ScatterSearchResults';
 import { useScatterSearch } from '../../hooks/useScatterSearch';
 import type { ScatterSearchParams } from '../../types';
 
 export function ScatterSearchPanel() {
-  const { routeResults, status, completedCount, totalCount, start, cancel } = useScatterSearch();
-  const [passengers, setPassengers] = useState(1);
+  const { routeResults, status, completedCount, totalCount, passengers, start, cancel } = useScatterSearch();
 
   const handleSearch = (params: ScatterSearchParams) => {
-    setPassengers(params.adults);
     start(params);
   };
 

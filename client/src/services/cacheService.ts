@@ -14,14 +14,18 @@ export async function fetchCachedQueries(showAll = false): Promise<CachedQuery[]
 }
 
 export async function searchCachedFlights(filters: {
-  origin?: string;
-  destination?: string;
-  departureDate?: string;
-}, showAll = false): Promise<CacheSearchResult[]> {
+  origins?: string[];
+  destinations?: string[];
+  departureDates?: string[];
+  tripType?: 'any' | 'oneway' | 'roundtrip';
+  limit?: number;
+} = {}, showAll = false): Promise<CacheSearchResult[]> {
   const params = new URLSearchParams();
-  if (filters.origin) params.set('origin', filters.origin);
-  if (filters.destination) params.set('destination', filters.destination);
-  if (filters.departureDate) params.set('departureDate', filters.departureDate);
+  if (filters.origins?.length) params.set('origin', filters.origins.join(','));
+  if (filters.destinations?.length) params.set('destination', filters.destinations.join(','));
+  if (filters.departureDates?.length) params.set('departureDate', filters.departureDates.join(','));
+  if (filters.tripType && filters.tripType !== 'any') params.set('tripType', filters.tripType);
+  if (filters.limit) params.set('limit', String(filters.limit));
   if (showAll) params.set('all', 'true');
 
   const response = await fetch(`/api/cache/search?${params}`, { credentials: 'include' });

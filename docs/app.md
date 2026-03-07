@@ -4,6 +4,12 @@
 - All data is cached for now so that the user can be combine existing queries
 - Where possible auto fill in every UI field to make it easier to search with less clicks. For example dates could default to today + 1 and return to today + 8
 - Auto suggest dep and arr ports with most recently searched ones, add location name next to them as you type so it is easier to see we have the right one
+- It is very important that code / ui changes does not invalidate or delete cached results
+
+## Credit system
+
+- Users can log in for free through google
+-
 
 ## UI Layout
 
@@ -47,16 +53,22 @@ The principle is that the query should get and store all results. The user can t
 The filter UI should be shared across all tabs.
 For pages with an outbound and inbound journey, the filters should be duplicated for each journey.
 
-Filters
+**Filters**
 
-- Direct, <=1 Stop, <= 2 Stop
+- Direct, <=1 Stop, <= 2 Stop - Defaults to <= 2 stops
 - Duration of journey, in buckets of 4 hours from < 4 hours to < 28 hours
 - Mixed carriers Y/N
 - Carrier filter (should be a dynamic tickbox of carriers from results, multi-select should be enabled, there should be an easy way to select all)
 - Dep time filter (between 00:00 and 24:00, a range slider is ideal)
 - Arr time filter (between 00:00 and 24:00, a range slider is ideal)
 
-Pages this applies to
+- Pages this applies to
+
+| Page       | Outbound | Inbound |
+| ---------- | -------- | ------- |
+| Time Sweep | Yes      | Yes     |
+| Scatter    | Yes      | Yes     |
+| Past       | Yes      | Yes     |
 
 - Route search (2 sets of filters)
 - Time Sweep (2 sets of filters)

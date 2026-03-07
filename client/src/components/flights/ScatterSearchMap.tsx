@@ -2,7 +2,7 @@ import { useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { airports } from '../../data/airports';
-import { computeBezierArc } from '../../utils/bezierArc';
+import { computeBezierArcSegments } from '../../utils/bezierArc';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 interface RouteSummary {
@@ -83,12 +83,12 @@ export function ScatterSearchMap({ routeSummaries, onRouteSelect, selectedRoute 
         const orig = airports[route.origin];
         const dest = airports[route.destination];
         if (!orig || !dest) return null;
-        const arc = computeBezierArc([orig.lat, orig.lng], [dest.lat, dest.lng]);
+        const segments = computeBezierArcSegments([orig.lat, orig.lng], [dest.lat, dest.lng]);
         const isSelected = selectedRoute?.origin === route.origin && selectedRoute?.destination === route.destination;
-        return { ...route, arc, isSelected, origLat: orig.lat, origLng: orig.lng, destLat: dest.lat, destLng: dest.lng };
+        return { ...route, segments, isSelected, origLat: orig.lat, origLng: orig.lng, destLat: dest.lat, destLng: dest.lng };
       })
       .filter(Boolean) as (RouteSummary & {
-        arc: L.LatLngTuple[];
+        segments: L.LatLngTuple[][];
         isSelected: boolean;
         origLat: number;
         origLng: number;
@@ -119,59 +119,63 @@ export function ScatterSearchMap({ routeSummaries, onRouteSelect, selectedRoute 
         />
         <FitBounds points={uniqueAirports} />
 
-        {/* Route arcs */}
-        {routeArcs.map((route) => {
-          const color = getRouteColor(route.cheapestPrice);
-          return (
-            <Polyline
-              key={`${route.origin}-${route.destination}`}
-              positions={route.arc}
-              pathOptions={{
-                color: route.isSelected ? '#2563EB' : color,
-                weight: route.isSelected ? 3.5 : 2,
-                opacity: route.isSelected ? 1 : 0.7,
-                dashArray: route.isSelected ? undefined : '8 4',
-              }}
-              eventHandlers={{
-                click: () => onRouteSelect(route.origin, route.destination),
+        {/* Route arcs — repeated at world copy offsets so they appear when zoomed out */}
+        {[-360, 0, 360].map((lngOffset) =>
+          routeArcs.map((route) => {
+            const color = getRouteColor(route.cheapestPrice);
+            return route.segments.map((seg, segIdx) => (
+              <Polyline
+                key={`${route.origin}-${route.destination}-${segIdx}-${lngOffset}`}
+                positions={seg.map(([lat, lng]) => [lat, lng + lngOffset] as L.LatLngTuple)}
+                pathOptions={{
+                  color: route.isSelected ? '#2563EB' : color,
+                  weight: route.isSelected ? 3.5 : 2,
+                  opacity: route.isSelected ? 1 : 0.7,
+                  dashArray: undefined,
+                }}
+                eventHandlers={{
+                  click: () => onRouteSelect(route.origin, route.destination),
+                }}
+              >
+                <Tooltip sticky>
+                  <span style={{ fontWeight: 600 }}>{route.origin} → {route.destination}</span>
+                  <br />
+                  {formatCurrency(route.cheapestPrice)}
+                </Tooltip>
+              </Polyline>
+            ));
+          })
+        )}
+
+        {/* Airport markers — repeated at world copy offsets */}
+        {[-360, 0, 360].map((lngOffset) =>
+          uniqueAirports.map((apt) => (
+            <CircleMarker
+              key={`${apt.code}-${lngOffset}`}
+              center={[apt.lat, apt.lng + lngOffset]}
+              radius={5}
+              pathOptions={apt.isOrigin ? {
+                color: '#1E40AF',
+                fillColor: '#3B82F6',
+                fillOpacity: 1,
+                weight: 2,
+              } : {
+                color: '#065F46',
+                fillColor: '#10B981',
+                fillOpacity: 1,
+                weight: 2,
               }}
             >
-              <Tooltip sticky>
-                <span style={{ fontWeight: 600 }}>{route.origin} → {route.destination}</span>
-                <br />
-                {formatCurrency(route.cheapestPrice)}
+              <Tooltip direction="top" offset={[0, -6]}>
+                <span style={{ fontWeight: 600 }}>{apt.code}</span>
+                {apt.city && <> — {apt.city}</>}
+                {apt.isOrigin && apt.isDestination && <span style={{ color: '#6B7280' }}> (origin & dest)</span>}
+                {apt.isOrigin && !apt.isDestination && <span style={{ color: '#3B82F6' }}> (origin)</span>}
+                {!apt.isOrigin && apt.isDestination && <span style={{ color: '#10B981' }}> (destination)</span>}
               </Tooltip>
-            </Polyline>
-          );
-        })}
-
-        {/* Airport markers */}
-        {uniqueAirports.map((apt) => (
-          <CircleMarker
-            key={apt.code}
-            center={[apt.lat, apt.lng]}
-            radius={5}
-            pathOptions={apt.isOrigin ? {
-              color: '#1E40AF',
-              fillColor: '#3B82F6',
-              fillOpacity: 1,
-              weight: 2,
-            } : {
-              color: '#065F46',
-              fillColor: '#10B981',
-              fillOpacity: 1,
-              weight: 2,
-            }}
-          >
-            <Tooltip direction="top" offset={[0, -6]}>
-              <span style={{ fontWeight: 600 }}>{apt.code}</span>
-              {apt.city && <> — {apt.city}</>}
-              {apt.isOrigin && apt.isDestination && <span style={{ color: '#6B7280' }}> (origin & dest)</span>}
-              {apt.isOrigin && !apt.isDestination && <span style={{ color: '#3B82F6' }}> (origin)</span>}
-              {!apt.isOrigin && apt.isDestination && <span style={{ color: '#10B981' }}> (destination)</span>}
-            </Tooltip>
-          </CircleMarker>
-        ))}
+            </CircleMarker>
+          ))
+        )}
       </MapContainer>
     </div>
   );

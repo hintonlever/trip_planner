@@ -19,18 +19,17 @@ cacheRouter.get('/queries', (req, res) => {
 
 cacheRouter.get('/search', (req, res) => {
   try {
-    const origin = req.query.origin as string | undefined;
-    const destination = req.query.destination as string | undefined;
-    const departureDate = req.query.departureDate as string | undefined;
+    const origins = req.query.origin ? (req.query.origin as string).split(',').filter(Boolean) : undefined;
+    const destinations = req.query.destination ? (req.query.destination as string).split(',').filter(Boolean) : undefined;
+    const departureDates = req.query.departureDate ? (req.query.departureDate as string).split(',').filter(Boolean) : undefined;
+    const tripType = (req.query.tripType as string | undefined) as 'any' | 'oneway' | 'roundtrip' | undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
 
-    if (!origin && !destination && !departureDate) {
-      res.status(400).json({ error: 'Provide at least one filter: origin, destination, or departureDate' });
-      return;
-    }
-
-    const showAll = req.query.all === 'true' && req.user?.is_admin === 1;
-    const userId = showAll ? undefined : req.user!.id;
-    const results = searchCachedResults({ origin, destination, departureDate }, userId);
+    const wantsAll = req.query.all === 'true';
+    const isAdmin = req.user?.is_admin === 1;
+    const userId = (wantsAll && isAdmin) ? undefined : req.user!.id;
+    const includeLegacy = wantsAll;
+    const results = searchCachedResults({ origins, destinations, departureDates, tripType, limit }, userId, includeLegacy);
     res.json({ results });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';

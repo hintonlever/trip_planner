@@ -1,20 +1,48 @@
-import { useState, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
+import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { searchFlightsForTimeSweep } from '../services/flightService';
 import type { ScatterSearchParams, ScatterSearchRouteResult } from '../types';
 
 const DELAY_MS = 2000;
 
+interface ScatterSearchStore {
+  routeResults: ScatterSearchRouteResult[];
+  status: 'idle' | 'running' | 'done' | 'cancelled';
+  completedCount: number;
+  totalCount: number;
+  passengers: number;
+  setRouteResults: (fn: (prev: ScatterSearchRouteResult[]) => ScatterSearchRouteResult[]) => void;
+  setStatus: (s: 'idle' | 'running' | 'done' | 'cancelled') => void;
+  setCompletedCount: (n: number) => void;
+  reset: (routeResults: ScatterSearchRouteResult[], totalCount: number, passengers: number) => void;
+}
+
+export const useScatterSearchStore = create<ScatterSearchStore>((set) => ({
+  routeResults: [],
+  status: 'idle',
+  completedCount: 0,
+  totalCount: 0,
+  passengers: 1,
+  setRouteResults: (fn) => set((s) => ({ routeResults: fn(s.routeResults) })),
+  setStatus: (status) => set({ status }),
+  setCompletedCount: (completedCount) => set({ completedCount }),
+  reset: (routeResults, totalCount, passengers) => set({
+    routeResults,
+    totalCount,
+    completedCount: 0,
+    status: 'running',
+    passengers,
+  }),
+}));
+
 export function useScatterSearch() {
-  const [routeResults, setRouteResults] = useState<ScatterSearchRouteResult[]>([]);
-  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'cancelled'>('idle');
-  const [completedCount, setCompletedCount] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
+  const store = useScatterSearchStore();
   const cancelRef = useRef(false);
 
   const cancel = useCallback(() => {
     cancelRef.current = true;
-    setStatus('cancelled');
+    useScatterSearchStore.getState().setStatus('cancelled');
   }, []);
 
   const start = useCallback(async (params: ScatterSearchParams) => {
@@ -37,15 +65,12 @@ export function useScatterSearch() {
       status: 'pending',
     }));
 
-    setRouteResults(initial);
-    setTotalCount(combinations.length);
-    setCompletedCount(0);
-    setStatus('running');
+    useScatterSearchStore.getState().reset(initial, combinations.length, params.adults);
 
     for (let i = 0; i < combinations.length; i++) {
       if (cancelRef.current) break;
 
-      setRouteResults((prev) => prev.map((r, idx) =>
+      useScatterSearchStore.getState().setRouteResults((prev) => prev.map((r, idx) =>
         idx === i ? { ...r, status: 'loading' as const } : r
       ));
 
@@ -55,7 +80,6 @@ export function useScatterSearch() {
           destination: combinations[i].destination,
           departureDate: params.departureDate,
           adults: params.adults,
-
           currency: params.currency,
         }, id);
 
@@ -63,7 +87,7 @@ export function useScatterSearch() {
           ? results.reduce((min, r) => r.totalPrice < min.totalPrice ? r : min)
           : null;
 
-        setRouteResults((prev) => prev.map((r, idx) =>
+        useScatterSearchStore.getState().setRouteResults((prev) => prev.map((r, idx) =>
           idx === i ? {
             ...r,
             results,
@@ -73,7 +97,7 @@ export function useScatterSearch() {
           } : r
         ));
       } catch (err) {
-        setRouteResults((prev) => prev.map((r, idx) =>
+        useScatterSearchStore.getState().setRouteResults((prev) => prev.map((r, idx) =>
           idx === i ? {
             ...r,
             status: 'error' as const,
@@ -82,7 +106,7 @@ export function useScatterSearch() {
         ));
       }
 
-      setCompletedCount(i + 1);
+      useScatterSearchStore.getState().setCompletedCount(i + 1);
 
       if (i < combinations.length - 1 && !cancelRef.current) {
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
@@ -90,9 +114,17 @@ export function useScatterSearch() {
     }
 
     if (!cancelRef.current) {
-      setStatus('done');
+      useScatterSearchStore.getState().setStatus('done');
     }
   }, []);
 
-  return { routeResults, status, completedCount, totalCount, start, cancel };
+  return {
+    routeResults: store.routeResults,
+    status: store.status,
+    completedCount: store.completedCount,
+    totalCount: store.totalCount,
+    passengers: store.passengers,
+    start,
+    cancel,
+  };
 }

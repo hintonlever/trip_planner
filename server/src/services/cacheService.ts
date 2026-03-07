@@ -139,33 +139,48 @@ export function getResultsByQueryId(queryId: number): FlightSearchResult[] {
 }
 
 export interface CacheSearchFilters {
-  origin?: string;
-  destination?: string;
-  departureDate?: string;
+  origins?: string[];
+  destinations?: string[];
+  departureDates?: string[];
+  tripType?: 'any' | 'oneway' | 'roundtrip';
+  limit?: number;
 }
 
-export function searchCachedResults(filters: CacheSearchFilters, userId?: number) {
+export function searchCachedResults(filters: CacheSearchFilters, userId?: number, includeLegacy = false) {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
   if (userId != null) {
-    conditions.push('q.user_id = ?');
+    if (includeLegacy) {
+      conditions.push('(q.user_id = ? OR q.user_id IS NULL)');
+    } else {
+      conditions.push('q.user_id = ?');
+    }
     params.push(userId);
   }
-  if (filters.origin) {
-    conditions.push('UPPER(r.origin) = ?');
-    params.push(filters.origin.toUpperCase().trim());
+  if (filters.origins && filters.origins.length > 0) {
+    const placeholders = filters.origins.map(() => '?').join(',');
+    conditions.push(`UPPER(r.origin) IN (${placeholders})`);
+    params.push(...filters.origins.map((o) => o.toUpperCase().trim()));
   }
-  if (filters.destination) {
-    conditions.push('UPPER(r.destination) = ?');
-    params.push(filters.destination.toUpperCase().trim());
+  if (filters.destinations && filters.destinations.length > 0) {
+    const placeholders = filters.destinations.map(() => '?').join(',');
+    conditions.push(`UPPER(r.destination) IN (${placeholders})`);
+    params.push(...filters.destinations.map((d) => d.toUpperCase().trim()));
   }
-  if (filters.departureDate) {
-    conditions.push('r.departure_at LIKE ?');
-    params.push(`${filters.departureDate}%`);
+  if (filters.departureDates && filters.departureDates.length > 0) {
+    const dateConds = filters.departureDates.map(() => 'r.departure_at LIKE ?');
+    conditions.push(`(${dateConds.join(' OR ')})`);
+    params.push(...filters.departureDates.map((d) => `${d}%`));
+  }
+  if (filters.tripType === 'oneway') {
+    conditions.push('r.return_departure_at IS NULL');
+  } else if (filters.tripType === 'roundtrip') {
+    conditions.push('r.return_departure_at IS NOT NULL');
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = filters.limit && filters.limit > 0 ? `LIMIT ${filters.limit}` : 'LIMIT 500';
 
   const rows = db.prepare(`
     SELECT r.*, q.departure_date AS query_departure_date, q.return_date AS query_return_date,
@@ -174,6 +189,7 @@ export function searchCachedResults(filters: CacheSearchFilters, userId?: number
     JOIN queries q ON q.id = r.query_id
     ${where}
     ORDER BY r.total_price ASC
+    ${limit}
   `).all(...params) as Array<Record<string, unknown>>;
 
   return rows.map((row) => ({

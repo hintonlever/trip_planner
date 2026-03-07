@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
+import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { searchFlightsForTimeSweep } from '../services/flightService';
 import { getQualifyingDates } from '../utils/dateRange';
@@ -12,26 +13,57 @@ function daysBetween(a: string, b: string): number {
   return Math.round((db.getTime() - da.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+interface TimeSweepStore {
+  dayResults: TimeSweepDayResult[];
+  status: 'idle' | 'running' | 'done' | 'cancelled';
+  completedCount: number;
+  totalCount: number;
+  timeSweepId: string | null;
+  sweepParams: TimeSweepParams | null;
+  passengers: number;
+  setDayResults: (fn: (prev: TimeSweepDayResult[]) => TimeSweepDayResult[]) => void;
+  setStatus: (s: 'idle' | 'running' | 'done' | 'cancelled') => void;
+  setCompletedCount: (n: number) => void;
+  reset: (dayResults: TimeSweepDayResult[], totalCount: number, id: string, params: TimeSweepParams, passengers: number) => void;
+}
+
+export const useTimeSweepStore = create<TimeSweepStore>((set) => ({
+  dayResults: [],
+  status: 'idle',
+  completedCount: 0,
+  totalCount: 0,
+  timeSweepId: null,
+  sweepParams: null,
+  passengers: 1,
+  setDayResults: (fn) => set((s) => ({ dayResults: fn(s.dayResults) })),
+  setStatus: (status) => set({ status }),
+  setCompletedCount: (completedCount) => set({ completedCount }),
+  reset: (dayResults, totalCount, id, params, passengers) => set({
+    dayResults,
+    totalCount,
+    completedCount: 0,
+    status: 'running',
+    timeSweepId: id,
+    sweepParams: params,
+    passengers,
+  }),
+}));
+
 export function useTimeSweep() {
-  const [dayResults, setDayResults] = useState<TimeSweepDayResult[]>([]);
-  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'cancelled'>('idle');
-  const [completedCount, setCompletedCount] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const [timeSweepId, setTimeSweepId] = useState<string | null>(null);
-  const [sweepParams, setSweepParams] = useState<TimeSweepParams | null>(null);
+  const store = useTimeSweepStore();
   const cancelRef = useRef(false);
 
   const cancel = useCallback(() => {
     cancelRef.current = true;
-    setStatus('cancelled');
+    useTimeSweepStore.getState().setStatus('cancelled');
   }, []);
 
   const combos = useMemo((): TimeSweepCombo[] => {
-    if (!sweepParams) return [];
-    const { minTripDays, maxTripDays } = sweepParams;
+    if (!store.sweepParams) return [];
+    const { minTripDays, maxTripDays } = store.sweepParams;
 
-    const outboundDays = dayResults.filter((d) => d.direction === 'outbound' && d.status === 'done');
-    const returnDays = dayResults.filter((d) => d.direction === 'return' && d.status === 'done');
+    const outboundDays = store.dayResults.filter((d) => d.direction === 'outbound' && d.status === 'done');
+    const returnDays = store.dayResults.filter((d) => d.direction === 'return' && d.status === 'done');
 
     const results: TimeSweepCombo[] = [];
 
@@ -58,13 +90,11 @@ export function useTimeSweep() {
 
     results.sort((a, b) => a.totalPrice - b.totalPrice);
     return results;
-  }, [dayResults, sweepParams]);
+  }, [store.dayResults, store.sweepParams]);
 
   const start = useCallback(async (params: TimeSweepParams) => {
     cancelRef.current = false;
     const id = nanoid();
-    setTimeSweepId(id);
-    setSweepParams(params);
 
     const outboundDates = getQualifyingDates(params.startDate, params.endDate, params.daysOfWeek);
     const returnDates = getQualifyingDates(params.startDate, params.endDate, params.returnDaysOfWeek);
@@ -86,15 +116,12 @@ export function useTimeSweep() {
       status: 'pending',
     }));
 
-    setDayResults(initial);
-    setTotalCount(allQueries.length);
-    setCompletedCount(0);
-    setStatus('running');
+    useTimeSweepStore.getState().reset(initial, allQueries.length, id, params, params.adults);
 
     for (let i = 0; i < allQueries.length; i++) {
       if (cancelRef.current) break;
 
-      setDayResults((prev) => prev.map((d, idx) =>
+      useTimeSweepStore.getState().setDayResults((prev) => prev.map((d, idx) =>
         idx === i ? { ...d, status: 'loading' as const } : d
       ));
 
@@ -113,7 +140,7 @@ export function useTimeSweep() {
           ? results.reduce((min, r) => r.totalPrice < min.totalPrice ? r : min)
           : null;
 
-        setDayResults((prev) => prev.map((d, idx) =>
+        useTimeSweepStore.getState().setDayResults((prev) => prev.map((d, idx) =>
           idx === i ? {
             ...d,
             results,
@@ -123,7 +150,7 @@ export function useTimeSweep() {
           } : d
         ));
       } catch (err) {
-        setDayResults((prev) => prev.map((d, idx) =>
+        useTimeSweepStore.getState().setDayResults((prev) => prev.map((d, idx) =>
           idx === i ? {
             ...d,
             status: 'error' as const,
@@ -132,15 +159,28 @@ export function useTimeSweep() {
         ));
       }
 
-      setCompletedCount(i + 1);
+      useTimeSweepStore.getState().setCompletedCount(i + 1);
 
       if (i < allQueries.length - 1 && !cancelRef.current) {
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
       }
     }
 
-    setStatus((prev) => prev === 'cancelled' ? 'cancelled' : 'done');
+    const cur = useTimeSweepStore.getState().status;
+    if (cur !== 'cancelled') {
+      useTimeSweepStore.getState().setStatus('done');
+    }
   }, []);
 
-  return { dayResults, status, completedCount, totalCount, timeSweepId, combos, start, cancel };
+  return {
+    dayResults: store.dayResults,
+    status: store.status,
+    completedCount: store.completedCount,
+    totalCount: store.totalCount,
+    timeSweepId: store.timeSweepId,
+    combos,
+    passengers: store.passengers,
+    start,
+    cancel,
+  };
 }

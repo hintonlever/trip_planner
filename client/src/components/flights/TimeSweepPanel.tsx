@@ -1,15 +1,12 @@
-import { useState } from 'react';
 import { TimeSweepForm } from './TimeSweepForm';
 import { TimeSweepResults } from './TimeSweepResults';
 import { useTimeSweep } from '../../hooks/useTimeSweep';
 import type { TimeSweepParams } from '../../types';
 
 export function TimeSweepPanel() {
-  const { dayResults, status, completedCount, totalCount, combos, start, cancel } = useTimeSweep();
-  const [passengers, setPassengers] = useState(1);
+  const { dayResults, status, completedCount, totalCount, combos, passengers, start, cancel } = useTimeSweep();
 
   const handleSearch = (params: TimeSweepParams) => {
-    setPassengers(params.adults);
     start(params);
   };
 
