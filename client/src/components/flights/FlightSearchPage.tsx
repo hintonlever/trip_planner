@@ -6,6 +6,7 @@ import { FlightFilters, applyFlightFilters, extractCarriers } from './FlightFilt
 import { TimeSweepPanel } from './TimeSweepPanel';
 import { ScatterSearchPanel } from './ScatterSearchPanel';
 import { useFlightSearchStore } from '../../store/useFlightSearchStore';
+import { AirportInput, useRecentAirports } from './AirportInput';
 import { create } from 'zustand';
 
 type SearchMode = 'specific' | 'timesweep' | 'scatter';
@@ -67,6 +68,7 @@ export function FlightSearchPage() {
 function SpecificSearchPanel() {
   const s = useFlightSearchStore((st) => st.specific);
   const set = useFlightSearchStore((st) => st.setSpecific);
+  const addRecent = useRecentAirports((st) => st.addRecent);
 
   const hasReturn = s.tripType === 'roundtrip';
 
@@ -86,6 +88,8 @@ function SpecificSearchPanel() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     set({ error: '', results: [], loading: true });
+    addRecent(s.origin.toUpperCase());
+    addRecent(s.destination.toUpperCase());
     try {
       const data = await searchFlights({
         origin: s.origin.toUpperCase(),
@@ -133,11 +137,10 @@ function SpecificSearchPanel() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-            <input
+            <AirportInput
               value={s.origin}
-              onChange={(e) => set({ origin: e.target.value })}
+              onChange={(v) => set({ origin: v })}
               placeholder="JFK"
-              maxLength={3}
               required
               className="w-20 border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
@@ -145,11 +148,10 @@ function SpecificSearchPanel() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-            <input
+            <AirportInput
               value={s.destination}
-              onChange={(e) => set({ destination: e.target.value })}
+              onChange={(v) => set({ destination: v })}
               placeholder="NRT"
-              maxLength={3}
               required
               className="w-20 border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400"
             />

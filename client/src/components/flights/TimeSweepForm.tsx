@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react';
 import { getQualifyingDates } from '../../utils/dateRange';
 import type { TimeSweepParams } from '../../types';
 import { useFlightSearchStore } from '../../store/useFlightSearchStore';
+import { AirportInput, useRecentAirports } from './AirportInput';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // getDay() values: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=0
@@ -17,6 +18,7 @@ interface TimeSweepFormProps {
 export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormProps) {
   const store = useFlightSearchStore((s) => s.timeSweep);
   const setStore = useFlightSearchStore((s) => s.setTimeSweep);
+  const addRecent = useRecentAirports((s) => s.addRecent);
   const [origin, setOrigin] = useState(store.origin);
   const [destination, setDestination] = useState(store.destination);
   const [startDate, setStartDate] = useState(store.startDate);
@@ -50,6 +52,8 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
     e.preventDefault();
     if (totalQueries === 0) return;
     setStore({ origin, destination, startDate, endDate, adults, currency });
+    addRecent(origin.toUpperCase());
+    addRecent(destination.toUpperCase());
     onSearch({
       origin: origin.toUpperCase(),
       destination: destination.toUpperCase(),
@@ -73,11 +77,10 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
         <div className="grid grid-cols-[1fr_1fr] sm:flex sm:items-end gap-2 sm:gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-            <input
+            <AirportInput
               value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
+              onChange={setOrigin}
               placeholder="JFK"
-              maxLength={3}
               required
               disabled={isRunning}
               className={`w-full sm:w-20 uppercase placeholder:normal-case ${inputClass}`}
@@ -85,11 +88,10 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-            <input
+            <AirportInput
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              onChange={setDestination}
               placeholder="NRT"
-              maxLength={3}
               required
               disabled={isRunning}
               className={`w-full sm:w-20 uppercase placeholder:normal-case ${inputClass}`}

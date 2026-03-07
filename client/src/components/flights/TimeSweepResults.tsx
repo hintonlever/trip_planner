@@ -164,40 +164,23 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
       {/* Combos tab */}
       {activeTab === 'combos' && (
         <div className="flex-1 flex flex-col overflow-auto">
-          {/* Trip length filter */}
-          <div className="px-3 sm:px-6 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 sm:gap-4 flex-wrap">
-            <div className="flex items-center gap-2 text-xs text-gray-600">
-              <span className="font-medium">Trip length:</span>
-              <input
-                type="number"
-                value={effectiveMin}
-                onChange={(e) => setTripLengthMin(Math.max(1, parseInt(e.target.value) || 1))}
-                min={1}
-                max={effectiveMax}
-                className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs"
-              />
-              <span>to</span>
-              <input
-                type="number"
-                value={effectiveMax}
-                onChange={(e) => setTripLengthMax(Math.max(effectiveMin, parseInt(e.target.value) || effectiveMin))}
-                min={effectiveMin}
-                className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs"
-              />
-              <span>days</span>
-              {(tripLengthMin !== null || tripLengthMax !== null) && (
-                <button
-                  onClick={() => { setTripLengthMin(null); setTripLengthMax(null); }}
-                  className="text-blue-600 hover:text-blue-800 ml-1"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-            <span className="text-xs text-gray-400 ml-auto">
-              {filteredCombos.length} of {combos.length} combos
-            </span>
-          </div>
+          {/* Shared filters with trip length */}
+          <FlightFilters
+            label="Combo filters"
+            filters={outboundFilters}
+            onChange={setOutboundFilters}
+            carriers={currentCarriers}
+            tripLength={{
+              min: tripDaysRange.min,
+              max: tripDaysRange.max,
+              effectiveMin,
+              effectiveMax,
+              onMinChange: setTripLengthMin,
+              onMaxChange: setTripLengthMax,
+              filteredCount: filteredCombos.length,
+              totalCount: combos.length,
+            }}
+          />
 
           {filteredCombos.length === 0 ? (
             <div className="px-3 sm:px-6 py-8 text-sm text-gray-400 text-center">

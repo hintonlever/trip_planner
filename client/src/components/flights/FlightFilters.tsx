@@ -138,14 +138,26 @@ export function extractCarriers(results: FlightSearchResult[], leg: 'outbound' |
   return Array.from(set).sort();
 }
 
+interface TripLengthFilterProps {
+  min: number;
+  max: number;
+  effectiveMin: number;
+  effectiveMax: number;
+  onMinChange: (v: number | null) => void;
+  onMaxChange: (v: number | null) => void;
+  filteredCount: number;
+  totalCount: number;
+}
+
 interface FlightFiltersProps {
   label?: string;
   filters: FlightFilterState;
   onChange: (f: FlightFilterState) => void;
   carriers: string[];
+  tripLength?: TripLengthFilterProps;
 }
 
-export function FlightFilters({ label, filters, onChange, carriers }: FlightFiltersProps) {
+export function FlightFilters({ label, filters, onChange, carriers, tripLength }: FlightFiltersProps) {
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
 
   const allSelected = filters.selectedCarriers.size === 0;
@@ -275,6 +287,41 @@ export function FlightFilters({ label, filters, onChange, carriers }: FlightFilt
           <span>Arrive:</span>
           <TimeRangeSlider value={filters.arrRange} onChange={(v) => onChange({ ...filters, arrRange: v })} />
         </div>
+
+        {/* Trip length (optional, time sweep only) */}
+        {tripLength && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-600">
+            <span>Trip:</span>
+            <input
+              type="number"
+              value={tripLength.effectiveMin}
+              onChange={(e) => tripLength.onMinChange(Math.max(1, parseInt(e.target.value) || 1))}
+              min={1}
+              max={tripLength.effectiveMax}
+              className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs"
+            />
+            <span>to</span>
+            <input
+              type="number"
+              value={tripLength.effectiveMax}
+              onChange={(e) => tripLength.onMaxChange(Math.max(tripLength.effectiveMin, parseInt(e.target.value) || tripLength.effectiveMin))}
+              min={tripLength.effectiveMin}
+              className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs"
+            />
+            <span>days</span>
+            {(tripLength.effectiveMin !== tripLength.min || tripLength.effectiveMax !== tripLength.max) && (
+              <button
+                onClick={() => { tripLength.onMinChange(null); tripLength.onMaxChange(null); }}
+                className="text-blue-600 hover:text-blue-800 ml-1"
+              >
+                Reset
+              </button>
+            )}
+            <span className="text-gray-400 ml-1">
+              {tripLength.filteredCount}/{tripLength.totalCount}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

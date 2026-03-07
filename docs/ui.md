@@ -5,6 +5,15 @@
 - Where possible auto fill in every UI field to make it easier to search with less clicks. For example dates could default to today + 1 and return to today + 8
 - Auto suggest dep and arr ports with most recently searched ones, add location name next to them as you type so it is easier to see we have the right one
 
+## Flight search
+<!-- Multiple Destination | Multiple Dates | Return option | -->
+
+
+| Page | Multiple Origin | 
+| ---  | --- |
+|sdfjkl| 
+
+
 ## Generic Result Filters
 
 The principle is that the query should get and store all results. The user can then filter those results dynamically without searching again.

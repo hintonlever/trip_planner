@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import type { ScatterSearchParams } from '../../types';
 import { useFlightSearchStore } from '../../store/useFlightSearchStore';
+import { useRecentAirports } from './AirportInput';
+import { MultiAirportInput } from './MultiAirportInput';
 
 interface ScatterSearchFormProps {
   onSearch: (params: ScatterSearchParams) => void;
@@ -9,31 +11,24 @@ interface ScatterSearchFormProps {
   isRunning: boolean;
 }
 
-function parseAirportCodes(input: string): string[] {
-  return input
-    .toUpperCase()
-    .split(/[,\s]+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length === 3 && /^[A-Z]{3}$/.test(s));
-}
-
 export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSearchFormProps) {
   const store = useFlightSearchStore((s) => s.scatter);
   const setStore = useFlightSearchStore((s) => s.setScatter);
-  const [originsInput, setOriginsInput] = useState(store.originsInput);
-  const [destinationsInput, setDestinationsInput] = useState(store.destinationsInput);
+  const addRecent = useRecentAirports((s) => s.addRecent);
+  const [origins, setOrigins] = useState<string[]>(store.origins);
+  const [destinations, setDestinations] = useState<string[]>(store.destinations);
   const [departureDate, setDepartureDate] = useState(store.departureDate);
   const [adults, setAdults] = useState(store.adults);
   const [currency, setCurrency] = useState(store.currency);
 
-  const origins = useMemo(() => parseAirportCodes(originsInput), [originsInput]);
-  const destinations = useMemo(() => parseAirportCodes(destinationsInput), [destinationsInput]);
   const combinationCount = origins.length * destinations.length;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (combinationCount === 0) return;
-    setStore({ originsInput, destinationsInput, departureDate, adults, currency });
+    setStore({ origins, destinations, departureDate, adults, currency });
+    for (const code of origins) addRecent(code);
+    for (const code of destinations) addRecent(code);
     onSearch({
       origins,
       destinations,
@@ -49,23 +44,23 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
         <div className="flex items-end gap-2 sm:gap-3 flex-wrap">
           <div className="flex-1 min-w-[140px] sm:min-w-48">
             <label className="block text-xs font-medium text-gray-600 mb-1">Origins</label>
-            <input
-              value={originsInput}
-              onChange={(e) => setOriginsInput(e.target.value)}
-              placeholder="SYD, MEL, BNE"
+            <MultiAirportInput
+              codes={origins}
+              onChange={setOrigins}
+              placeholder="Add airports..."
               disabled={isRunning}
-              className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              color="blue"
             />
           </div>
 
           <div className="flex-1 min-w-[140px] sm:min-w-48">
             <label className="block text-xs font-medium text-gray-600 mb-1">Destinations</label>
-            <input
-              value={destinationsInput}
-              onChange={(e) => setDestinationsInput(e.target.value)}
-              placeholder="NRT, KIX, ICN"
+            <MultiAirportInput
+              codes={destinations}
+              onChange={setDestinations}
+              placeholder="Add airports..."
               disabled={isRunning}
-              className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              color="green"
             />
           </div>
 
@@ -127,40 +122,16 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
           )}
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          {origins.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-gray-500">From:</span>
-              {origins.map((code) => (
-                <span key={code} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono">
-                  {code}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {destinations.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-gray-500">To:</span>
-              {destinations.map((code) => (
-                <span key={code} className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-mono">
-                  {code}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {combinationCount > 0 && (
-            <span className="text-xs text-gray-500 ml-auto">
-              {origins.length} origin{origins.length !== 1 ? 's' : ''} × {destinations.length} destination{destinations.length !== 1 ? 's' : ''} = {combinationCount} API quer{combinationCount !== 1 ? 'ies' : 'y'}
-              {combinationCount > 10 && (
-                <span className="text-amber-600 ml-1">
-                  (~{Math.ceil(combinationCount * 2 / 60)} min)
-                </span>
-              )}
-            </span>
-          )}
-        </div>
+        {combinationCount > 0 && (
+          <div className="text-xs text-gray-500">
+            {origins.length} origin{origins.length !== 1 ? 's' : ''} × {destinations.length} destination{destinations.length !== 1 ? 's' : ''} = {combinationCount} API quer{combinationCount !== 1 ? 'ies' : 'y'}
+            {combinationCount > 10 && (
+              <span className="text-amber-600 ml-1">
+                (~{Math.ceil(combinationCount * 2 / 60)} min)
+              </span>
+            )}
+          </div>
+        )}
       </form>
     </div>
   );

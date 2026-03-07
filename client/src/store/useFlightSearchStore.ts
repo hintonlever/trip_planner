@@ -34,8 +34,8 @@ interface TimeSweepState {
 }
 
 interface ScatterState {
-  originsInput: string;
-  destinationsInput: string;
+  origins: string[];
+  destinations: string[];
   departureDate: string;
   adults: number;
   currency: string;
@@ -87,8 +87,8 @@ export const useFlightSearchStore = create<FlightSearchStore>((set) => ({
     set((s) => ({ timeSweep: { ...s.timeSweep, ...partial } })),
 
   scatter: {
-    originsInput: '',
-    destinationsInput: '',
+    origins: [],
+    destinations: [],
     departureDate: addDays(1),
     adults: 1,
     currency: 'AUD',

@@ -4,6 +4,7 @@ import { searchFlights } from '../../services/flightService';
 import type { FlightSearchResult } from '../../types';
 import { useTripStore } from '../../store/useTripStore';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { AirportInput, useRecentAirports } from '../flights/AirportInput';
 
 function addDays(days: number): string {
   const d = new Date();
@@ -12,6 +13,7 @@ function addDays(days: number): string {
 }
 
 export function FlightSearchForm() {
+  const addRecent = useRecentAirports((s) => s.addRecent);
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>('oneway');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
@@ -33,6 +35,8 @@ export function FlightSearchForm() {
     setError('');
     setResults([]);
     setLoading(true);
+    addRecent(origin.toUpperCase());
+    addRecent(destination.toUpperCase());
     try {
       const data = await searchFlights({
         origin: origin.toUpperCase(),
@@ -114,22 +118,20 @@ export function FlightSearchForm() {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-            <input
+            <AirportInput
               value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
+              onChange={setOrigin}
               placeholder="JFK"
-              maxLength={3}
               required
               className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-            <input
+            <AirportInput
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              onChange={setDestination}
               placeholder="NRT"
-              maxLength={3}
               required
               className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
