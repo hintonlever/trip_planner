@@ -4,8 +4,10 @@ import {
 } from 'recharts';
 import type { TimeSweepDayResult, TimeSweepCombo } from '../../types';
 import { FlightResultsTable } from './FlightResultsTable';
+import { FlightMap } from './FlightMap';
 import { FlightFilters, applyFlightFilters, extractCarriers, defaultFilterState, type FlightFilterState } from './FlightFilters';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { Table2, Map as MapIcon } from 'lucide-react';
 
 interface TimeSweepResultsProps {
   dayResults: TimeSweepDayResult[];
@@ -21,12 +23,14 @@ function formatDateLabel(dateStr: string): string {
 }
 
 type TabView = 'combos' | 'outbound' | 'return';
+type SweepViewMode = 'table' | 'map';
 
 export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepResultsProps) {
   const [activeTab, setActiveTab] = useState<TabView>('combos');
   const [outboundFilters, setOutboundFilters] = useState<FlightFilterState>({ ...defaultFilterState, selectedCarriers: new Set() });
   const [returnFilters, setReturnFilters] = useState<FlightFilterState>({ ...defaultFilterState, selectedCarriers: new Set() });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<SweepViewMode>('table');
 
   // Trip length range filter for combos tab
   const tripDaysRange = useMemo(() => {
@@ -52,7 +56,6 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
   const currentFilters = activeTab === 'return' ? returnFilters : outboundFilters;
   const setCurrentFilters = activeTab === 'return' ? setReturnFilters : setOutboundFilters;
 
-  // Extract carriers for the current direction
   const currentCarriers = useMemo(() => {
     const allFlights = currentDirResults
       .filter((d) => d.status === 'done')
@@ -65,13 +68,10 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
       if (day.status !== 'done') {
         return { ...day, filteredResults: day.results, filteredCheapestPrice: null as number | null };
       }
-
       const filtered = applyFlightFilters(day.results, currentFilters, 'outbound');
-
       const cheapest = filtered.length > 0
         ? filtered.reduce((min, r) => r.totalPrice < min.totalPrice ? r : min)
         : null;
-
       return {
         ...day,
         filteredResults: filtered,
@@ -98,22 +98,22 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
       .flatMap((d) => d.filteredResults!);
   }, [filteredDayResults]);
 
-  // Filtered combos by trip length
   const filteredCombos = useMemo(() => {
     return combos.filter((c) => c.tripDays >= effectiveMin && c.tripDays <= effectiveMax);
   }, [combos, effectiveMin, effectiveMax]);
 
   const handleBarClick = (_data: unknown, index: number) => {
     const entry = chartData[index];
-    if (entry) {
-      setSelectedDate(entry.date);
-    }
+    if (entry) setSelectedDate(entry.date);
   };
 
   const handleTabChange = (tab: TabView) => {
     setActiveTab(tab);
     setSelectedDate(null);
   };
+
+  // Determine which results to show in table/map for outbound/return tabs
+  const displayResults = selectedDayData?.filteredResults ?? (selectedDate ? [] : allFilteredResults);
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
@@ -164,7 +164,6 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
       {/* Combos tab */}
       {activeTab === 'combos' && (
         <div className="flex-1 flex flex-col overflow-auto">
-          {/* Shared filters with trip length */}
           <FlightFilters
             label="Combo filters"
             filters={outboundFilters}
@@ -234,13 +233,35 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
       {/* Outbound / Return tabs */}
       {(activeTab === 'outbound' || activeTab === 'return') && (
         <>
-          {/* Shared filters */}
-          <FlightFilters
-            label={activeTab === 'outbound' ? 'Outbound filters' : 'Return filters'}
-            filters={currentFilters}
-            onChange={setCurrentFilters}
-            carriers={currentCarriers}
-          />
+          {/* Filters + view toggle */}
+          <div className="flex items-center">
+            <div className="flex-1">
+              <FlightFilters
+                label={activeTab === 'outbound' ? 'Outbound filters' : 'Return filters'}
+                filters={currentFilters}
+                onChange={setCurrentFilters}
+                carriers={currentCarriers}
+              />
+            </div>
+            <div className="pr-3 sm:pr-6 flex items-center gap-1 bg-gray-50 border-b border-gray-200 py-2">
+              <div className="flex items-center gap-1 bg-gray-200 rounded p-0.5">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-1 rounded text-xs flex items-center gap-1 ${viewMode === 'table' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <Table2 className="w-3.5 h-3.5" />
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`p-1 rounded text-xs flex items-center gap-1 ${viewMode === 'map' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <MapIcon className="w-3.5 h-3.5" />
+                  Map
+                </button>
+              </div>
+            </div>
+          </div>
 
           {selectedDate && (
             <div className="px-3 sm:px-6 py-1 bg-gray-50 border-b border-gray-200 flex items-center">
@@ -302,28 +323,25 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
             </div>
           )}
 
-          {/* Results table */}
-          {selectedDayData && selectedDayData.filteredResults && selectedDayData.filteredResults.length > 0 && (
-            <div className="flex flex-col min-h-0">
+          {/* Results: table or map */}
+          {displayResults.length > 0 && (
+            <div className="flex flex-col flex-1 min-h-0">
               <div className="px-3 sm:px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
-                {selectedDayData.filteredResults.length} flight{selectedDayData.filteredResults.length !== 1 ? 's' : ''} on {formatDateLabel(selectedDate!)}
+                {displayResults.length} flight{displayResults.length !== 1 ? 's' : ''}
+                {selectedDate ? ` on ${formatDateLabel(selectedDate)}` : ' across all dates'}
               </div>
-              <FlightResultsTable results={selectedDayData.filteredResults} passengers={passengers} />
+              {viewMode === 'table' && (
+                <FlightResultsTable results={displayResults} passengers={passengers} />
+              )}
+              {viewMode === 'map' && (
+                <FlightMap results={displayResults} />
+              )}
             </div>
           )}
 
-          {selectedDate && selectedDayData && selectedDayData.filteredResults && selectedDayData.filteredResults.length === 0 && (
+          {selectedDate && displayResults.length === 0 && (
             <div className="px-3 sm:px-6 py-8 text-sm text-gray-400 text-center">
               No flights match filters for {formatDateLabel(selectedDate)}
-            </div>
-          )}
-
-          {!selectedDate && allFilteredResults.length > 0 && (
-            <div className="flex flex-col min-h-0">
-              <div className="px-3 sm:px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
-                {allFilteredResults.length} flight{allFilteredResults.length !== 1 ? 's' : ''} across all dates
-              </div>
-              <FlightResultsTable results={allFilteredResults} passengers={passengers} />
             </div>
           )}
         </>

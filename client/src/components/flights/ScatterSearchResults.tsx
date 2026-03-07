@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import type { ScatterSearchRouteResult, FlightSearchResult } from '../../types';
 import { FlightResultsTable } from './FlightResultsTable';
-import { ScatterSearchMap } from './ScatterSearchMap';
+import { FlightMap } from './FlightMap';
+import { ODMatrix } from './ODMatrix';
 import { FlightFilters, applyFlightFilters, extractCarriers, defaultFilterState, type FlightFilterState } from './FlightFilters';
-import { Table2, Map as MapIcon } from 'lucide-react';
+import { Table2, Map as MapIcon, Grid3x3 } from 'lucide-react';
 
-type ViewMode = 'table' | 'map';
+type ViewMode = 'table' | 'map' | 'od';
 
 interface ScatterSearchResultsProps {
   routeResults: ScatterSearchRouteResult[];
@@ -50,16 +51,6 @@ export function ScatterSearchResults({ routeResults, passengers }: ScatterSearch
     return flights;
   }, [filteredRoutes]);
 
-  const routeSummaries = useMemo(() => {
-    return filteredRoutes
-      .filter((r) => r.status === 'done' && r.filteredCheapestPrice !== null)
-      .map((r) => ({
-        origin: r.origin,
-        destination: r.destination,
-        cheapestPrice: r.filteredCheapestPrice!,
-      }));
-  }, [filteredRoutes]);
-
   const selectedRouteFlights = useMemo(() => {
     if (!selectedRoute) return null;
     const route = filteredRoutes.find((r) => r.origin === selectedRoute.origin && r.destination === selectedRoute.destination);
@@ -93,6 +84,13 @@ export function ScatterSearchResults({ routeResults, passengers }: ScatterSearch
                 <MapIcon className="w-3.5 h-3.5" />
                 Map
               </button>
+              <button
+                onClick={() => setViewMode('od')}
+                className={`p-1 rounded text-xs flex items-center gap-1 ${viewMode === 'od' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <Grid3x3 className="w-3.5 h-3.5" />
+                O&D
+              </button>
             </div>
           </div>
         </div>
@@ -123,14 +121,31 @@ export function ScatterSearchResults({ routeResults, passengers }: ScatterSearch
       )}
 
       {viewMode === 'map' && (
-        <ScatterSearchMap
-          routeSummaries={routeSummaries}
+        <FlightMap
+          results={allFilteredFlights}
           onRouteSelect={(origin, destination) => setSelectedRoute({ origin, destination })}
           selectedRoute={selectedRoute}
         />
       )}
 
       {viewMode === 'map' && selectedRoute && selectedRouteFlights && selectedRouteFlights.length > 0 && (
+        <div className="flex flex-col min-h-0 border-t border-gray-200" style={{ maxHeight: '40vh' }}>
+          <div className="px-3 sm:px-6 py-1.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
+            {selectedRouteFlights.length} flight{selectedRouteFlights.length !== 1 ? 's' : ''} from {selectedRoute.origin} &rarr; {selectedRoute.destination}
+          </div>
+          <FlightResultsTable results={selectedRouteFlights} passengers={passengers} />
+        </div>
+      )}
+
+      {viewMode === 'od' && (
+        <ODMatrix
+          results={allFilteredFlights}
+          onCellClick={(origin, destination) => setSelectedRoute({ origin, destination })}
+          selectedRoute={selectedRoute}
+        />
+      )}
+
+      {viewMode === 'od' && selectedRoute && selectedRouteFlights && selectedRouteFlights.length > 0 && (
         <div className="flex flex-col min-h-0 border-t border-gray-200" style={{ maxHeight: '40vh' }}>
           <div className="px-3 sm:px-6 py-1.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
             {selectedRouteFlights.length} flight{selectedRouteFlights.length !== 1 ? 's' : ''} from {selectedRoute.origin} &rarr; {selectedRoute.destination}
