@@ -13,3 +13,6 @@ cache.db-shm
 
 # Private docs
 hidden_docs/
+
+# Claude
+.claude/
