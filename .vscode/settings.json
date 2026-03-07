@@ -1,5 +1,9 @@
 {
   "r.rterm.mac": "/Library/Frameworks/R.framework/Resources/bin/R",
   "r.plot.useHttpgd": true,
-  "r.bracketedPaste": false
+  "r.bracketedPaste": false,
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  }
 }
