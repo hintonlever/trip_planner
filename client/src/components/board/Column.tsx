@@ -51,7 +51,7 @@ export function Column({ columnId, isOver }: Props) {
   };
 
   return (
-    <div className={`flex-shrink-0 w-72 rounded-xl border flex flex-col max-h-full transition-colors ${isOver ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}>
+    <div className={`flex-shrink-0 w-64 sm:w-72 rounded-xl border flex flex-col max-h-full transition-colors ${isOver ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}>
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between mb-1">
           {editing ? (

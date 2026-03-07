@@ -25,9 +25,9 @@ export async function searchFlights(
   return data.results;
 }
 
-export async function searchFlightsForRouteSearch(
+export async function searchFlightsForTimeSweep(
   params: FlightSearchParams,
-  routeSearchId: string
+  timeSweepId: string
 ): Promise<FlightSearchResult[]> {
   const query = new URLSearchParams({
     origin: params.origin,
@@ -35,7 +35,7 @@ export async function searchFlightsForRouteSearch(
     departureDate: params.departureDate,
     adults: String(params.adults),
     fresh: 'true',
-    routeSearchId,
+    timeSweepId,
   });
 
   if (params.currency) query.set('currency', params.currency);

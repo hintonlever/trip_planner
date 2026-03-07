@@ -16,8 +16,9 @@ export type {
   FlightSegment,
   CachedQuery,
   CacheSearchResult,
-  RouteSearchParams,
-  RouteSearchDayResult,
+  TimeSweepParams,
+  TimeSweepDayResult,
+  TimeSweepCombo,
   ScatterSearchParams,
   ScatterSearchRouteResult,
 } from './flight';

@@ -22,7 +22,6 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
   const [departureDate, setDepartureDate] = useState('');
   const [adults, setAdults] = useState(1);
   const [currency, setCurrency] = useState('AUD');
-  const [nonStop, setNonStop] = useState(false);
 
   const origins = useMemo(() => parseAirportCodes(originsInput), [originsInput]);
   const destinations = useMemo(() => parseAirportCodes(destinationsInput), [destinationsInput]);
@@ -36,16 +35,15 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
       destinations,
       departureDate,
       adults,
-      nonStop,
       currency,
     });
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex items-end gap-3 flex-wrap">
-          <div className="flex-1 min-w-48">
+        <div className="flex items-end gap-2 sm:gap-3 flex-wrap">
+          <div className="flex-1 min-w-[140px] sm:min-w-48">
             <label className="block text-xs font-medium text-gray-600 mb-1">Origins</label>
             <input
               value={originsInput}
@@ -56,7 +54,7 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
             />
           </div>
 
-          <div className="flex-1 min-w-48">
+          <div className="flex-1 min-w-[140px] sm:min-w-48">
             <label className="block text-xs font-medium text-gray-600 mb-1">Destinations</label>
             <input
               value={destinationsInput}
@@ -104,17 +102,6 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
             />
           </div>
 
-          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={nonStop}
-              onChange={(e) => setNonStop(e.target.checked)}
-              disabled={isRunning}
-              className="rounded"
-            />
-            Direct only
-          </label>
-
           {isRunning ? (
             <button
               type="button"
@@ -136,7 +123,7 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           {origins.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-gray-500">From:</span>

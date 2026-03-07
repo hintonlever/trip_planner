@@ -49,7 +49,8 @@ db.exec(`
 // Migration for existing databases: add segments columns if missing
 try { db.exec('ALTER TABLE results ADD COLUMN segments_json TEXT'); } catch { /* column already exists */ }
 try { db.exec('ALTER TABLE results ADD COLUMN return_segments_json TEXT'); } catch { /* column already exists */ }
-try { db.exec('ALTER TABLE queries ADD COLUMN route_search_id TEXT'); } catch { /* column already exists */ }
+try { db.exec('ALTER TABLE queries ADD COLUMN time_sweep_id TEXT'); } catch { /* column already exists */ }
+try { db.exec('ALTER TABLE queries ADD COLUMN user_id INTEGER'); } catch { /* column already exists */ }
 
 function buildCacheKey(params: FlightSearchParams): string {
   return [
@@ -181,7 +182,7 @@ export function searchCachedResults(filters: CacheSearchFilters, userId?: number
   }));
 }
 
-export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[], routeSearchId?: string, userId?: number) => {
+export const cacheResults = db.transaction((params: FlightSearchParams, results: FlightSearchResult[], timeSweepId?: string, userId?: number) => {
   const key = buildCacheKey(params);
 
   // Delete old cached entry if it exists (for fresh refreshes)
@@ -191,7 +192,7 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
   }
 
   const info = db.prepare(`
-    INSERT INTO queries (origin, destination, departure_date, return_date, adults, non_stop, currency, cache_key, created_at, route_search_id, user_id)
+    INSERT INTO queries (origin, destination, departure_date, return_date, adults, non_stop, currency, cache_key, created_at, time_sweep_id, user_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     params.origin.toUpperCase().trim(),
@@ -203,7 +204,7 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
     (params.currency || 'USD').toUpperCase(),
     key,
     new Date().toISOString(),
-    routeSearchId || null,
+    timeSweepId || null,
     userId || null,
   );
 
@@ -252,9 +253,9 @@ export const cacheResults = db.transaction((params: FlightSearchParams, results:
   }
 });
 
-export function getRouteSearchResults(routeSearchId: string, userId?: number) {
-  const conditions = ['q.route_search_id = ?'];
-  const params: unknown[] = [routeSearchId];
+export function getTimeSweepResults(timeSweepId: string, userId?: number) {
+  const conditions = ['q.time_sweep_id = ?'];
+  const params: unknown[] = [timeSweepId];
   if (userId != null) {
     conditions.push('q.user_id = ?');
     params.push(userId);

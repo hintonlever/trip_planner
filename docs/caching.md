@@ -10,13 +10,13 @@ The app uses two application-level caches. Both are essential.
 - **Cache key:** `ORIGIN|DESTINATION|DEPARTURE_DATE|RETURN_DATE|ADULTS|CURRENCY`
 - **Bypass:** Add `?fresh=true` query param to force a fresh API call (old cached entry is deleted and replaced)
 - **Schema:**
-  - `queries` table — stores search parameters (origin, destination, dates, adults, currency, route_search_id)
+  - `queries` table — stores search parameters (origin, destination, dates, adults, currency, time_sweep_id)
   - `results` table — stores denormalized flight offers (pricing, segments, carrier info)
 - **API endpoints:**
   - `GET /api/cache/queries` — list all cached searches
   - `GET /api/cache/search` — search cached results by filters
   - `GET /api/cache/queries/:id/results` — get results for a specific query
-  - `GET /api/cache/route-search/:id` — get results for a route search
+  - `GET /api/cache/time-sweep/:id` — get results for a time sweep
 
 ## localStorage (client-side)
 

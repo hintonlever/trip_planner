@@ -38,19 +38,23 @@ export interface CacheSearchResult extends FlightSearchResult {
   queryCachedAt: string;
 }
 
-export interface RouteSearchParams {
+export interface TimeSweepParams {
   origin: string;
   destination: string;
   startDate: string;
   endDate: string;
   daysOfWeek: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
+  returnDaysOfWeek: number[];
+  minTripDays: number;
+  maxTripDays: number;
   adults: number;
   nonStop?: boolean;
   currency?: string;
 }
 
-export interface RouteSearchDayResult {
+export interface TimeSweepDayResult {
   date: string;
+  direction: 'outbound' | 'return';
   results: FlightSearchResult[];
   cheapest: FlightSearchResult | null;
   cheapestPrice: number | null;
@@ -58,12 +62,20 @@ export interface RouteSearchDayResult {
   error?: string;
 }
 
+export interface TimeSweepCombo {
+  outbound: FlightSearchResult;
+  outboundDate: string;
+  returnFlight: FlightSearchResult;
+  returnDate: string;
+  totalPrice: number;
+  tripDays: number;
+}
+
 export interface ScatterSearchParams {
   origins: string[];
   destinations: string[];
   departureDate: string;
   adults: number;
-  nonStop?: boolean;
   currency?: string;
 }
 

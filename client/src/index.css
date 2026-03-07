@@ -1,7 +1,27 @@
 @import "leaflet/dist/leaflet.css";
 @import "tailwindcss";
 
+@custom-variant xs (@media (min-width: 480px));
+
 html, body, #root {
   margin: 0;
   height: 100%;
+}
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 767px) {
+  button, a, label {
+    min-height: 36px;
+  }
 }

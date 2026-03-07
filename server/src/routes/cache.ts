@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllQueries, getResultsByQueryId, searchCachedResults, getRouteSearchResults } from '../services/cacheService.js';
+import { getAllQueries, getResultsByQueryId, searchCachedResults, getTimeSweepResults } from '../services/cacheService.js';
 
 export const cacheRouter = Router();
 
@@ -56,16 +56,16 @@ cacheRouter.get('/queries/:id/results', (req, res) => {
   }
 });
 
-cacheRouter.get('/route-search/:id', (req, res) => {
+cacheRouter.get('/time-sweep/:id', (req, res) => {
   try {
-    const routeSearchId = req.params.id;
+    const timeSweepId = req.params.id;
     const showAll = req.query.all === 'true' && req.user?.is_admin === 1;
     const userId = showAll ? undefined : req.user!.id;
-    const results = getRouteSearchResults(routeSearchId, userId);
+    const results = getTimeSweepResults(timeSweepId, userId);
     res.json({ results });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Route search results error:', message);
+    console.error('Time sweep results error:', message);
     res.status(500).json({ error: message });
   }
 });

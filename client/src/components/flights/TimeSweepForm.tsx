@@ -1,58 +1,69 @@
 import { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { getQualifyingDates } from '../../utils/dateRange';
-import type { RouteSearchParams } from '../../types';
+import type { TimeSweepParams } from '../../types';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // getDay() values: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=0
 const DAY_VALUES = [1, 2, 3, 4, 5, 6, 0];
 
-interface RouteSearchFormProps {
-  onSearch: (params: RouteSearchParams) => void;
+interface TimeSweepFormProps {
+  onSearch: (params: TimeSweepParams) => void;
   onCancel: () => void;
   isRunning: boolean;
 }
 
-export function RouteSearchForm({ onSearch, onCancel, isRunning }: RouteSearchFormProps) {
+export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormProps) {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [daysOfWeek, setDaysOfWeek] = useState([1, 2, 3, 4, 5, 6, 0]);
+  const [returnDaysOfWeek, setReturnDaysOfWeek] = useState([1, 2, 3, 4, 5, 6, 0]);
+  const [minTripDays, setMinTripDays] = useState(4);
+  const [maxTripDays, setMaxTripDays] = useState(5);
   const [adults, setAdults] = useState(1);
   const [currency, setCurrency] = useState('AUD');
-  const [nonStop, setNonStop] = useState(false);
 
-  const expectedQueries = useMemo(() => {
+  const outboundCount = useMemo(() => {
     if (!startDate || !endDate) return 0;
     return getQualifyingDates(startDate, endDate, daysOfWeek).length;
   }, [startDate, endDate, daysOfWeek]);
 
-  const toggleDay = (day: number) => {
-    setDaysOfWeek((prev) =>
+  const returnCount = useMemo(() => {
+    if (!startDate || !endDate) return 0;
+    return getQualifyingDates(startDate, endDate, returnDaysOfWeek).length;
+  }, [startDate, endDate, returnDaysOfWeek]);
+
+  const totalQueries = outboundCount + returnCount;
+
+  const toggleDay = (day: number, setter: React.Dispatch<React.SetStateAction<number[]>>) => {
+    setter((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (expectedQueries === 0) return;
+    if (totalQueries === 0) return;
     onSearch({
       origin: origin.toUpperCase(),
       destination: destination.toUpperCase(),
       startDate,
       endDate,
       daysOfWeek,
+      returnDaysOfWeek,
+      minTripDays,
+      maxTripDays: Math.max(minTripDays, maxTripDays),
       adults,
-      nonStop,
       currency,
     });
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex items-end gap-3 flex-wrap">
+        <div className="flex items-end gap-2 sm:gap-3 flex-wrap">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
             <input
@@ -129,17 +140,6 @@ export function RouteSearchForm({ onSearch, onCancel, isRunning }: RouteSearchFo
             />
           </div>
 
-          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={nonStop}
-              onChange={(e) => setNonStop(e.target.checked)}
-              disabled={isRunning}
-              className="rounded"
-            />
-            Direct only
-          </label>
-
           {isRunning ? (
             <button
               type="button"
@@ -152,7 +152,7 @@ export function RouteSearchForm({ onSearch, onCancel, isRunning }: RouteSearchFo
           ) : (
             <button
               type="submit"
-              disabled={expectedQueries === 0}
+              disabled={totalQueries === 0}
               className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
               <Search className="w-4 h-4" />
@@ -161,15 +161,15 @@ export function RouteSearchForm({ onSearch, onCancel, isRunning }: RouteSearchFo
           )}
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">Days:</span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-gray-600">Depart:</span>
             {DAY_LABELS.map((label, i) => (
               <label key={i} className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={daysOfWeek.includes(DAY_VALUES[i])}
-                  onChange={() => toggleDay(DAY_VALUES[i])}
+                  onChange={() => toggleDay(DAY_VALUES[i], setDaysOfWeek)}
                   disabled={isRunning}
                   className="rounded"
                 />
@@ -178,12 +178,54 @@ export function RouteSearchForm({ onSearch, onCancel, isRunning }: RouteSearchFo
             ))}
           </div>
 
-          {expectedQueries > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-gray-600">Return:</span>
+            {DAY_LABELS.map((label, i) => (
+              <label key={i} className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={returnDaysOfWeek.includes(DAY_VALUES[i])}
+                  onChange={() => toggleDay(DAY_VALUES[i], setReturnDaysOfWeek)}
+                  disabled={isRunning}
+                  className="rounded"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Trip length:</span>
+            <input
+              type="number"
+              value={minTripDays}
+              onChange={(e) => setMinTripDays(Math.max(1, parseInt(e.target.value) || 1))}
+              min={1}
+              max={90}
+              disabled={isRunning}
+              className="w-14 border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+            />
+            <span className="text-xs text-gray-500">to</span>
+            <input
+              type="number"
+              value={maxTripDays}
+              onChange={(e) => setMaxTripDays(Math.max(minTripDays, parseInt(e.target.value) || minTripDays))}
+              min={minTripDays}
+              max={90}
+              disabled={isRunning}
+              className="w-14 border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+            />
+            <span className="text-xs text-gray-500">days</span>
+          </div>
+
+          {totalQueries > 0 && (
             <span className="text-xs text-gray-500 ml-auto">
-              {expectedQueries} API quer{expectedQueries !== 1 ? 'ies' : 'y'}
-              {expectedQueries > 20 && (
+              {totalQueries} API quer{totalQueries !== 1 ? 'ies' : 'y'} ({outboundCount} outbound + {returnCount} return)
+              {totalQueries > 20 && (
                 <span className="text-amber-600 ml-1">
-                  (~{Math.ceil(expectedQueries * 2 / 60)} min)
+                  (~{Math.ceil(totalQueries * 2 / 60)} min)
                 </span>
               )}
             </span>

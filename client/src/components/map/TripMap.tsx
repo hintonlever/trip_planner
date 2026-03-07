@@ -70,8 +70,26 @@ function InvalidateSize({ collapsed }: { collapsed: boolean }) {
   return null;
 }
 
+const MAP_HEIGHT_DESKTOP = 256;
+const MAP_HEIGHT_MOBILE = 180;
+
+function useMapHeight() {
+  const [height, setHeight] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 768 ? MAP_HEIGHT_MOBILE : MAP_HEIGHT_DESKTOP
+  );
+  useEffect(() => {
+    const handler = () => setHeight(window.innerWidth < 768 ? MAP_HEIGHT_MOBILE : MAP_HEIGHT_DESKTOP);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return height;
+}
+
 export function TripMap() {
-  const [collapsed, setCollapsed] = useState(false);
+  const mapHeight = useMapHeight();
+  const [collapsed, setCollapsed] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 768
+  );
   const columnOrder = useTripStore((s) => s.columnOrder);
   const columns = useTripStore((s) => s.columns);
   const items = useTripStore((s) => s.items);
@@ -135,12 +153,12 @@ export function TripMap() {
       {/* Map container with animated height */}
       <div
         className="w-full overflow-hidden transition-[height] duration-300 ease-in-out"
-        style={{ height: collapsed ? 0 : 256 }}
+        style={{ height: collapsed ? 0 : mapHeight }}
       >
         <MapContainer
           center={[20, 0]}
           zoom={2}
-          style={{ height: 256, width: '100%' }}
+          style={{ height: mapHeight, width: '100%' }}
           scrollWheelZoom={true}
         >
           <TileLayer

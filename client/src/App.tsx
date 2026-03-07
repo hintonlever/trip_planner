@@ -21,6 +21,7 @@ export default function App() {
   const loadState = useTripStore((s) => s.loadState);
   const setCurrentTripId = useTripStore((s) => s.setCurrentTripId);
   const [activeTab, setActiveTab] = useState<Tab>('planner');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { isAuthenticated, isLoading } = useAuthStore();
   const setUser = useAuthStore((s) => s.setUser);
@@ -106,13 +107,18 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        showSidebarToggle={activeTab === 'planner'}
+      />
 
       {activeTab === 'planner' && (
         <>
           <TripMap />
           <div className="flex flex-1 overflow-hidden">
-            <Sidebar />
+            <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
             <Board />
           </div>
           <ComparisonBar />

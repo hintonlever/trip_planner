@@ -3,10 +3,10 @@ import { Search, Loader2, BarChart3, Grid3x3 } from 'lucide-react';
 import { searchFlights } from '../../services/flightService';
 import type { FlightSearchResult } from '../../types';
 import { FlightResultsTable } from './FlightResultsTable';
-import { RouteSearchPanel } from './RouteSearchPanel';
+import { TimeSweepPanel } from './TimeSweepPanel';
 import { ScatterSearchPanel } from './ScatterSearchPanel';
 
-type SearchMode = 'specific' | 'route' | 'scatter';
+type SearchMode = 'specific' | 'timesweep' | 'scatter';
 
 export function FlightSearchPage() {
   const [searchMode, setSearchMode] = useState<SearchMode>('specific');
@@ -14,7 +14,7 @@ export function FlightSearchPage() {
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       {/* Sub-tab navigation */}
-      <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-2">
+      <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 flex items-center gap-1 sm:gap-2 overflow-x-auto">
         <button
           onClick={() => setSearchMode('specific')}
           className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md transition-colors ${
@@ -27,15 +27,15 @@ export function FlightSearchPage() {
           Specific Date
         </button>
         <button
-          onClick={() => setSearchMode('route')}
+          onClick={() => setSearchMode('timesweep')}
           className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md transition-colors ${
-            searchMode === 'route'
+            searchMode === 'timesweep'
               ? 'bg-blue-50 text-blue-700 font-medium'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
           }`}
         >
           <BarChart3 className="w-3.5 h-3.5" />
-          Route Search
+          Time Sweep
         </button>
         <button
           onClick={() => setSearchMode('scatter')}
@@ -51,7 +51,7 @@ export function FlightSearchPage() {
       </div>
 
       {searchMode === 'specific' && <SpecificSearchPanel />}
-      {searchMode === 'route' && <RouteSearchPanel />}
+      {searchMode === 'timesweep' && <TimeSweepPanel />}
       {searchMode === 'scatter' && <ScatterSearchPanel />}
     </div>
   );
@@ -99,8 +99,8 @@ function SpecificSearchPanel() {
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <form onSubmit={handleSearch} className="flex items-end gap-3 flex-wrap">
+      <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-4">
+        <form onSubmit={handleSearch} className="flex items-end gap-2 sm:gap-3 flex-wrap">
           <div className="flex rounded-md overflow-auto border border-gray-300 text-sm">
             <button
               type="button"
@@ -225,7 +225,7 @@ function SpecificSearchPanel() {
 
       {results.length > 0 && (
         <div className="flex-1 flex flex-col overflow-auto">
-          <div className="px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
+          <div className="px-3 sm:px-6 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
             {displayResults.length} result{displayResults.length !== 1 ? 's' : ''} found
             {nonStop && displayResults.length !== results.length && (
               <span className="text-gray-400 ml-1">({results.length} total, filtering to direct)</span>
@@ -236,7 +236,7 @@ function SpecificSearchPanel() {
       )}
 
       {!loading && results.length === 0 && !error && (
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm p-4 text-center">
           Search for flights to see results here
         </div>
       )}

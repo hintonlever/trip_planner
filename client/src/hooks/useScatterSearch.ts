@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { nanoid } from 'nanoid';
-import { searchFlightsForRouteSearch } from '../services/flightService';
+import { searchFlightsForTimeSweep } from '../services/flightService';
 import type { ScatterSearchParams, ScatterSearchRouteResult } from '../types';
 
 const DELAY_MS = 2000;
@@ -50,12 +50,12 @@ export function useScatterSearch() {
       ));
 
       try {
-        const results = await searchFlightsForRouteSearch({
+        const results = await searchFlightsForTimeSweep({
           origin: combinations[i].origin,
           destination: combinations[i].destination,
           departureDate: params.departureDate,
           adults: params.adults,
-          nonStop: params.nonStop,
+
           currency: params.currency,
         }, id);
 

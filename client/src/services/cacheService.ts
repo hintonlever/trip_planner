@@ -47,12 +47,12 @@ export async function fetchCachedResults(queryId: number): Promise<FlightSearchR
   return data.results;
 }
 
-export async function fetchRouteSearchResults(routeSearchId: string): Promise<(FlightSearchResult & { departureDate: string })[]> {
-  const response = await fetch(`/api/cache/route-search/${routeSearchId}`, { credentials: 'include' });
+export async function fetchTimeSweepResults(timeSweepId: string): Promise<(FlightSearchResult & { departureDate: string })[]> {
+  const response = await fetch(`/api/cache/time-sweep/${timeSweepId}`, { credentials: 'include' });
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error || `Failed to fetch route search results (${response.status})`);
+    throw new Error(data.error || `Failed to fetch time sweep results (${response.status})`);
   }
 
   const data = (await response.json()) as { results: (FlightSearchResult & { departureDate: string })[] };

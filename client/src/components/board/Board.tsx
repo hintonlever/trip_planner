@@ -114,15 +114,15 @@ export function Board() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 overflow-x-auto p-4">
-          <div className="flex gap-4 items-start min-h-full">
+        <div className="flex-1 overflow-x-auto p-2 sm:p-4">
+          <div className="flex gap-2 sm:gap-4 items-start min-h-full">
             {columnOrder.map((colId) => (
               <Column key={colId} columnId={colId} isOver={activeId !== null && overColumnId === colId} />
             ))}
 
             <button
               onClick={handleAddColumn}
-              className="flex-shrink-0 w-72 h-32 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors"
+              className="flex-shrink-0 w-64 sm:w-72 h-32 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors"
             >
               <Plus className="w-6 h-6" />
               <span className="text-sm font-medium">Add Destination</span>

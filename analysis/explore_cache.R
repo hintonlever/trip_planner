@@ -35,7 +35,7 @@ queries_display <- queries %>%
     route = paste(origin, "->", destination),
     cached_at = format(as.POSIXct(created_at, tz = "UTC"), "%Y-%m-%d %H:%M")
   ) %>%
-  select(id, route, departure_date, return_date, adults, currency, result_count, cached_at, route_search_id)
+  select(id, route, departure_date, return_date, adults, currency, result_count, cached_at, time_sweep_id)
 
 head(queries_display)
 

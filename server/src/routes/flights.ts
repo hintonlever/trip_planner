@@ -6,7 +6,7 @@ export const flightsRouter = Router();
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  max: 60,
   message: { error: 'Too many requests. Please wait a minute.' },
 });
 
@@ -14,7 +14,7 @@ flightsRouter.use(limiter);
 
 flightsRouter.get('/search', async (req, res) => {
   try {
-    const { origin, destination, departureDate, adults, currency, returnDate, fresh, routeSearchId } = req.query;
+    const { origin, destination, departureDate, adults, currency, returnDate, fresh, timeSweepId } = req.query;
 
     if (!origin || !destination || !departureDate || !adults) {
       res.status(400).json({ error: 'Missing required params: origin, destination, departureDate, adults' });
@@ -28,7 +28,7 @@ flightsRouter.get('/search', async (req, res) => {
       adults: Number(adults),
       currency: currency ? String(currency) : undefined,
       returnDate: returnDate ? String(returnDate) : undefined,
-    }, fresh === 'true', routeSearchId ? String(routeSearchId) : undefined, req.user?.id);
+    }, fresh === 'true', timeSweepId ? String(timeSweepId) : undefined, req.user?.id);
 
     res.json({ results });
   } catch (err) {

@@ -20,14 +20,14 @@ export function ComparisonBar() {
   const minTotal = Math.min(...totals.filter((t) => t.total > 0).map((t) => t.total));
 
   return (
-    <div className="h-12 bg-white border-t border-gray-200 flex items-center px-4 gap-4 flex-shrink-0 overflow-x-auto">
-      <span className="text-xs font-medium text-gray-500 flex-shrink-0">Compare:</span>
+    <div className="h-12 bg-white border-t border-gray-200 flex items-center px-2 sm:px-4 gap-2 sm:gap-4 flex-shrink-0 overflow-x-auto">
+      <span className="text-xs font-medium text-gray-500 flex-shrink-0 hidden sm:inline">Compare:</span>
       {totals.map((col) => {
         const isCheapest = col.total > 0 && col.total === minTotal && totals.filter((t) => t.total > 0).length > 1;
         return (
           <div
             key={col.columnId}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm flex-shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm flex-shrink-0 ${
               isCheapest
                 ? 'bg-green-100 text-green-800 border border-green-300'
                 : 'bg-gray-100 text-gray-700 border border-gray-200'

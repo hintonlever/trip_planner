@@ -120,32 +120,34 @@ export function PastQueriesPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Tab bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-4">
-        <button
-          onClick={() => setViewMode('queries')}
-          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md ${
-            viewMode === 'queries'
-              ? 'bg-blue-50 text-blue-700 font-medium'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <Plane className="w-3.5 h-3.5" />
-          Cached Queries
-        </button>
-        <button
-          onClick={() => setViewMode('search')}
-          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md ${
-            viewMode === 'search'
-              ? 'bg-blue-50 text-blue-700 font-medium'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <Search className="w-3.5 h-3.5" />
-          Search Cache
-        </button>
+      <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 flex items-center gap-2 sm:gap-4 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button
+            onClick={() => setViewMode('queries')}
+            className={`flex items-center gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-md whitespace-nowrap ${
+              viewMode === 'queries'
+                ? 'bg-blue-50 text-blue-700 font-medium'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Plane className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Cached</span> Queries
+          </button>
+          <button
+            onClick={() => setViewMode('search')}
+            className={`flex items-center gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-md whitespace-nowrap ${
+              viewMode === 'search'
+                ? 'bg-blue-50 text-blue-700 font-medium'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Search</span> Cache
+          </button>
+        </div>
 
         {viewMode === 'queries' && (
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
             {isAdmin && (
               <button
                 onClick={() => setShowAllUsers((v) => !v)}
@@ -156,18 +158,18 @@ export function PastQueriesPage() {
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                All Users
+                <span className="hidden sm:inline">All Users</span>
               </button>
             )}
-            <span className="text-sm text-gray-500">
-              {queries.length} cached quer{queries.length !== 1 ? 'ies' : 'y'}
+            <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+              {queries.length} quer{queries.length !== 1 ? 'ies' : 'y'}
             </span>
             <button
               onClick={loadQueries}
               className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600 px-2 py-1.5 rounded hover:bg-gray-50"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         )}
@@ -176,8 +178,8 @@ export function PastQueriesPage() {
       {/* Search view */}
       {viewMode === 'search' && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <form onSubmit={handleSearch} className="bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex items-end gap-3 flex-wrap">
+          <form onSubmit={handleSearch} className="bg-white border-b border-gray-200 px-3 sm:px-6 py-4">
+            <div className="flex items-end gap-2 sm:gap-3 flex-wrap">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Origin</label>
                 <input
@@ -225,7 +227,7 @@ export function PastQueriesPage() {
 
           <div className="flex-1 overflow-auto">
             {searchError && (
-              <div className="px-6 py-4 text-red-600 text-sm">{searchError}</div>
+              <div className="px-3 sm:px-6 py-4 text-red-600 text-sm">{searchError}</div>
             )}
             {!hasSearched ? (
               <div className="flex items-center justify-center h-full text-gray-400 text-sm">
@@ -238,7 +240,7 @@ export function PastQueriesPage() {
               </div>
             ) : searchResults.length > 0 ? (
               <div className="flex flex-col h-full">
-                <div className="px-6 py-2 text-sm text-gray-500 border-b border-gray-100">
+                <div className="px-3 sm:px-6 py-2 text-sm text-gray-500 border-b border-gray-100">
                   {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found across cached queries
                 </div>
                 <FlightResultsTable results={searchResults} passengers={1} showCacheAge />
@@ -265,30 +267,32 @@ export function PastQueriesPage() {
                 <div key={q.id}>
                   <button
                     onClick={() => toggleExpand(q.id)}
-                    className="w-full px-6 py-3 flex items-center gap-4 hover:bg-gray-50 text-left"
+                    className="w-full px-3 sm:px-6 py-3 flex items-start sm:items-center gap-2 sm:gap-4 hover:bg-gray-50 text-left"
                   >
-                    <Plane className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                    <div className="flex-1 flex items-center gap-4 flex-wrap">
-                      <span className="text-sm font-medium">
-                        {q.origin} → {q.destination}
-                      </span>
-                      <span className="text-xs text-gray-500">{q.departure_date}</span>
-                      {q.return_date && (
-                        <span className="text-xs text-gray-500">Return: {q.return_date}</span>
-                      )}
-                      <span className="text-xs text-gray-400">{q.adults} pax</span>
-                      <span className="text-xs text-gray-400">{q.currency}</span>
-                      {q.non_stop === 1 && (
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Direct</span>
-                      )}
+                    <Plane className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                        <span className="text-sm font-medium">
+                          {q.origin} → {q.destination}
+                        </span>
+                        <span className="text-xs text-gray-500">{q.departure_date}</span>
+                        {q.return_date && (
+                          <span className="text-xs text-gray-500">Return: {q.return_date}</span>
+                        )}
+                        <span className="text-xs text-gray-400">{q.adults} pax</span>
+                        <span className="text-xs text-gray-400">{q.currency}</span>
+                        {q.non_stop === 1 && (
+                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Direct</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-0">
+                        <span className="text-xs text-gray-400">
+                          {q.result_count} result{q.result_count !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-xs text-gray-400 hidden sm:inline">{formatTimestamp(q.created_at)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-xs text-gray-400">
-                        {q.result_count} result{q.result_count !== 1 ? 's' : ''}
-                      </span>
-                      <span className="text-xs text-gray-400">{formatTimestamp(q.created_at)}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${expandedId === q.id ? 'rotate-180' : ''}`} />
-                    </div>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${expandedId === q.id ? 'rotate-180' : ''}`} />
                   </button>
 
                   {expandedId === q.id && (
