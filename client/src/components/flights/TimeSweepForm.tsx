@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { getQualifyingDates } from '../../utils/dateRange';
 import type { TimeSweepParams } from '../../types';
+import { useFlightSearchStore } from '../../store/useFlightSearchStore';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // getDay() values: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=0
@@ -14,16 +15,18 @@ interface TimeSweepFormProps {
 }
 
 export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormProps) {
-  const [origin, setOrigin] = useState('');
-  const [destination, setDestination] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const store = useFlightSearchStore((s) => s.timeSweep);
+  const setStore = useFlightSearchStore((s) => s.setTimeSweep);
+  const [origin, setOrigin] = useState(store.origin);
+  const [destination, setDestination] = useState(store.destination);
+  const [startDate, setStartDate] = useState(store.startDate);
+  const [endDate, setEndDate] = useState(store.endDate);
   const [daysOfWeek, setDaysOfWeek] = useState([1, 2, 3, 4, 5, 6, 0]);
   const [returnDaysOfWeek, setReturnDaysOfWeek] = useState([1, 2, 3, 4, 5, 6, 0]);
   const [minTripDays, setMinTripDays] = useState(4);
   const [maxTripDays, setMaxTripDays] = useState(5);
-  const [adults, setAdults] = useState(1);
-  const [currency, setCurrency] = useState('AUD');
+  const [adults, setAdults] = useState(store.adults);
+  const [currency, setCurrency] = useState(store.currency);
 
   const outboundCount = useMemo(() => {
     if (!startDate || !endDate) return 0;
@@ -46,6 +49,7 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (totalQueries === 0) return;
+    setStore({ origin, destination, startDate, endDate, adults, currency });
     onSearch({
       origin: origin.toUpperCase(),
       destination: destination.toUpperCase(),
@@ -60,10 +64,13 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
     });
   };
 
+  const inputClass = "border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50";
+
   return (
     <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex items-end gap-2 sm:gap-3 flex-wrap">
+        {/* Row 1: route + dates — uses grid on mobile for clean 2-col layout */}
+        <div className="grid grid-cols-[1fr_1fr] sm:flex sm:items-end gap-2 sm:gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
             <input
@@ -73,10 +80,9 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
               maxLength={3}
               required
               disabled={isRunning}
-              className="w-20 border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              className={`w-full sm:w-20 uppercase placeholder:normal-case ${inputClass}`}
             />
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
             <input
@@ -86,10 +92,9 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
               maxLength={3}
               required
               disabled={isRunning}
-              className="w-20 border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              className={`w-full sm:w-20 uppercase placeholder:normal-case ${inputClass}`}
             />
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Start date</label>
             <input
@@ -98,10 +103,9 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
               onChange={(e) => setStartDate(e.target.value)}
               required
               disabled={isRunning}
-              className="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              className={`w-full ${inputClass}`}
             />
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">End date</label>
             <input
@@ -111,10 +115,13 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
               min={startDate}
               required
               disabled={isRunning}
-              className="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              className={`w-full ${inputClass}`}
             />
           </div>
+        </div>
 
+        {/* Row 2: pax, currency, button */}
+        <div className="grid grid-cols-[1fr_1fr_auto] sm:flex sm:items-end gap-2 sm:gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Passengers</label>
             <input
@@ -124,10 +131,9 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
               min={1}
               max={9}
               disabled={isRunning}
-              className="w-16 border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              className={`w-full sm:w-16 ${inputClass}`}
             />
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Currency</label>
             <input
@@ -136,15 +142,14 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
               placeholder="AUD"
               maxLength={3}
               disabled={isRunning}
-              className="w-16 border border-gray-300 rounded-md px-2 py-1.5 text-sm uppercase placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              className={`w-full sm:w-16 uppercase placeholder:normal-case ${inputClass}`}
             />
           </div>
-
           {isRunning ? (
             <button
               type="button"
               onClick={onCancel}
-              className="bg-red-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-red-700 flex items-center gap-2"
+              className="self-end bg-red-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-red-700 flex items-center justify-center gap-2"
             >
               <X className="w-4 h-4" />
               Cancel
@@ -153,7 +158,7 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
             <button
               type="submit"
               disabled={totalQueries === 0}
-              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              className="self-end bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Search className="w-4 h-4" />
               Search
@@ -161,40 +166,46 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap">
+        {/* Row 3: day-of-week checkboxes */}
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-gray-600">Depart:</span>
-            {DAY_LABELS.map((label, i) => (
-              <label key={i} className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={daysOfWeek.includes(DAY_VALUES[i])}
-                  onChange={() => toggleDay(DAY_VALUES[i], setDaysOfWeek)}
-                  disabled={isRunning}
-                  className="rounded"
-                />
-                {label}
-              </label>
-            ))}
+            <span className="text-xs font-medium text-gray-600 w-12 flex-shrink-0">Depart:</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              {DAY_LABELS.map((label, i) => (
+                <label key={i} className="flex items-center gap-0.5 sm:gap-1 text-xs text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={daysOfWeek.includes(DAY_VALUES[i])}
+                    onChange={() => toggleDay(DAY_VALUES[i], setDaysOfWeek)}
+                    disabled={isRunning}
+                    className="rounded w-3.5 h-3.5"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-gray-600">Return:</span>
-            {DAY_LABELS.map((label, i) => (
-              <label key={i} className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={returnDaysOfWeek.includes(DAY_VALUES[i])}
-                  onChange={() => toggleDay(DAY_VALUES[i], setReturnDaysOfWeek)}
-                  disabled={isRunning}
-                  className="rounded"
-                />
-                {label}
-              </label>
-            ))}
+            <span className="text-xs font-medium text-gray-600 w-12 flex-shrink-0">Return:</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              {DAY_LABELS.map((label, i) => (
+                <label key={i} className="flex items-center gap-0.5 sm:gap-1 text-xs text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={returnDaysOfWeek.includes(DAY_VALUES[i])}
+                    onChange={() => toggleDay(DAY_VALUES[i], setReturnDaysOfWeek)}
+                    disabled={isRunning}
+                    className="rounded w-3.5 h-3.5"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
+        {/* Row 4: trip length + query count */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Trip length:</span>
@@ -221,8 +232,8 @@ export function TimeSweepForm({ onSearch, onCancel, isRunning }: TimeSweepFormPr
           </div>
 
           {totalQueries > 0 && (
-            <span className="text-xs text-gray-500 ml-auto">
-              {totalQueries} API quer{totalQueries !== 1 ? 'ies' : 'y'} ({outboundCount} outbound + {returnCount} return)
+            <span className="text-xs text-gray-500 sm:ml-auto">
+              {totalQueries} quer{totalQueries !== 1 ? 'ies' : 'y'}
               {totalQueries > 20 && (
                 <span className="text-amber-600 ml-1">
                   (~{Math.ceil(totalQueries * 2 / 60)} min)

@@ -5,12 +5,18 @@ import type { FlightSearchResult } from '../../types';
 import { useTripStore } from '../../store/useTripStore';
 import { formatCurrency } from '../../utils/formatCurrency';
 
+function addDays(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 export function FlightSearchForm() {
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>('oneway');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
-  const [date, setDate] = useState('');
-  const [returnDate, setReturnDate] = useState('');
+  const [date, setDate] = useState(addDays(1));
+  const [returnDate, setReturnDate] = useState(addDays(8));
   const [adults, setAdults] = useState(1);
   const [currency, setCurrency] = useState('AUD');
   const [nonStop, setNonStop] = useState(false);

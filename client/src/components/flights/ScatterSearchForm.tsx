@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import type { ScatterSearchParams } from '../../types';
+import { useFlightSearchStore } from '../../store/useFlightSearchStore';
 
 interface ScatterSearchFormProps {
   onSearch: (params: ScatterSearchParams) => void;
@@ -17,11 +18,13 @@ function parseAirportCodes(input: string): string[] {
 }
 
 export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSearchFormProps) {
-  const [originsInput, setOriginsInput] = useState('');
-  const [destinationsInput, setDestinationsInput] = useState('');
-  const [departureDate, setDepartureDate] = useState('');
-  const [adults, setAdults] = useState(1);
-  const [currency, setCurrency] = useState('AUD');
+  const store = useFlightSearchStore((s) => s.scatter);
+  const setStore = useFlightSearchStore((s) => s.setScatter);
+  const [originsInput, setOriginsInput] = useState(store.originsInput);
+  const [destinationsInput, setDestinationsInput] = useState(store.destinationsInput);
+  const [departureDate, setDepartureDate] = useState(store.departureDate);
+  const [adults, setAdults] = useState(store.adults);
+  const [currency, setCurrency] = useState(store.currency);
 
   const origins = useMemo(() => parseAirportCodes(originsInput), [originsInput]);
   const destinations = useMemo(() => parseAirportCodes(destinationsInput), [destinationsInput]);
@@ -30,6 +33,7 @@ export function ScatterSearchForm({ onSearch, onCancel, isRunning }: ScatterSear
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (combinationCount === 0) return;
+    setStore({ originsInput, destinationsInput, departureDate, adults, currency });
     onSearch({
       origins,
       destinations,

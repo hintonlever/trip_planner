@@ -4,8 +4,8 @@ import {
 } from 'recharts';
 import type { TimeSweepDayResult, TimeSweepCombo } from '../../types';
 import { FlightResultsTable } from './FlightResultsTable';
+import { FlightFilters, applyFlightFilters, extractCarriers, defaultFilterState, type FlightFilterState } from './FlightFilters';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { parseDuration } from '../../utils/flightUtils';
 
 interface TimeSweepResultsProps {
   dayResults: TimeSweepDayResult[];
@@ -24,24 +24,40 @@ type TabView = 'combos' | 'outbound' | 'return';
 
 export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepResultsProps) {
   const [activeTab, setActiveTab] = useState<TabView>('combos');
-  const [directOnly, setDirectOnly] = useState(false);
-  const [maxDuration, setMaxDuration] = useState<number | null>(null);
-  const [selectedCarrier, setSelectedCarrier] = useState<string | null>(null);
+  const [outboundFilters, setOutboundFilters] = useState<FlightFilterState>({ ...defaultFilterState, selectedCarriers: new Set() });
+  const [returnFilters, setReturnFilters] = useState<FlightFilterState>({ ...defaultFilterState, selectedCarriers: new Set() });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Trip length range filter for combos tab
+  const tripDaysRange = useMemo(() => {
+    if (combos.length === 0) return { min: 1, max: 30 };
+    let min = Infinity, max = -Infinity;
+    for (const c of combos) {
+      if (c.tripDays < min) min = c.tripDays;
+      if (c.tripDays > max) max = c.tripDays;
+    }
+    return { min, max };
+  }, [combos]);
+
+  const [tripLengthMin, setTripLengthMin] = useState<number | null>(null);
+  const [tripLengthMax, setTripLengthMax] = useState<number | null>(null);
+
+  const effectiveMin = tripLengthMin ?? tripDaysRange.min;
+  const effectiveMax = tripLengthMax ?? tripDaysRange.max;
 
   const outboundResults = useMemo(() => dayResults.filter((d) => d.direction === 'outbound'), [dayResults]);
   const returnResults = useMemo(() => dayResults.filter((d) => d.direction === 'return'), [dayResults]);
 
   const currentDirResults = activeTab === 'return' ? returnResults : outboundResults;
+  const currentFilters = activeTab === 'return' ? returnFilters : outboundFilters;
+  const setCurrentFilters = activeTab === 'return' ? setReturnFilters : setOutboundFilters;
 
-  const allCarriers = useMemo(() => {
-    const set = new Set<string>();
-    for (const day of currentDirResults) {
-      for (const r of day.results) {
-        set.add(r.airlineName);
-      }
-    }
-    return Array.from(set).sort();
+  // Extract carriers for the current direction
+  const currentCarriers = useMemo(() => {
+    const allFlights = currentDirResults
+      .filter((d) => d.status === 'done')
+      .flatMap((d) => d.results);
+    return extractCarriers(allFlights, 'outbound');
   }, [currentDirResults]);
 
   const filteredDayResults = useMemo(() => {
@@ -50,10 +66,7 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
         return { ...day, filteredResults: day.results, filteredCheapestPrice: null as number | null };
       }
 
-      let filtered = day.results;
-      if (directOnly) filtered = filtered.filter((r) => r.stops === 0);
-      if (maxDuration) filtered = filtered.filter((r) => parseDuration(r.duration) <= maxDuration);
-      if (selectedCarrier) filtered = filtered.filter((r) => r.airlineName === selectedCarrier);
+      const filtered = applyFlightFilters(day.results, currentFilters, 'outbound');
 
       const cheapest = filtered.length > 0
         ? filtered.reduce((min, r) => r.totalPrice < min.totalPrice ? r : min)
@@ -65,7 +78,7 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
         filteredCheapestPrice: cheapest?.totalPrice ?? null,
       };
     });
-  }, [currentDirResults, directOnly, maxDuration, selectedCarrier]);
+  }, [currentDirResults, currentFilters]);
 
   const chartData = filteredDayResults
     .filter((d) => d.status === 'done')
@@ -85,6 +98,11 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
       .flatMap((d) => d.filteredResults!);
   }, [filteredDayResults]);
 
+  // Filtered combos by trip length
+  const filteredCombos = useMemo(() => {
+    return combos.filter((c) => c.tripDays >= effectiveMin && c.tripDays <= effectiveMax);
+  }, [combos, effectiveMin, effectiveMax]);
+
   const handleBarClick = (_data: unknown, index: number) => {
     const entry = chartData[index];
     if (entry) {
@@ -100,26 +118,26 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       {/* Tab bar */}
-      <div className="px-3 sm:px-6 py-2 bg-white border-b border-gray-200 flex items-center gap-2">
+      <div className="px-3 sm:px-6 py-2 bg-white border-b border-gray-200 flex items-center gap-1 sm:gap-2 overflow-x-auto">
         <button
           onClick={() => handleTabChange('combos')}
-          className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+          className={`text-xs px-2 sm:px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${
             activeTab === 'combos'
               ? 'bg-blue-50 text-blue-700 font-medium'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
           }`}
         >
-          Best Combos ({combos.length})
+          Combos ({filteredCombos.length})
         </button>
         <button
           onClick={() => handleTabChange('outbound')}
-          className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+          className={`text-xs px-2 sm:px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${
             activeTab === 'outbound'
               ? 'bg-blue-50 text-blue-700 font-medium'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
           }`}
         >
-          Outbound ({outboundResults.filter((d) => d.status === 'done').length})
+          Out ({outboundResults.filter((d) => d.status === 'done').length})
           {outboundResults.filter((d) => d.status === 'error').length > 0 && (
             <span className="text-red-500 ml-1">
               {outboundResults.filter((d) => d.status === 'error').length} err
@@ -128,13 +146,13 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
         </button>
         <button
           onClick={() => handleTabChange('return')}
-          className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+          className={`text-xs px-2 sm:px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${
             activeTab === 'return'
               ? 'bg-blue-50 text-blue-700 font-medium'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
           }`}
         >
-          Return ({returnResults.filter((d) => d.status === 'done').length})
+          Ret ({returnResults.filter((d) => d.status === 'done').length})
           {returnResults.filter((d) => d.status === 'error').length > 0 && (
             <span className="text-red-500 ml-1">
               {returnResults.filter((d) => d.status === 'error').length} err
@@ -145,10 +163,47 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
 
       {/* Combos tab */}
       {activeTab === 'combos' && (
-        <div className="flex-1 overflow-auto">
-          {combos.length === 0 ? (
+        <div className="flex-1 flex flex-col overflow-auto">
+          {/* Trip length filter */}
+          <div className="px-3 sm:px-6 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 sm:gap-4 flex-wrap">
+            <div className="flex items-center gap-2 text-xs text-gray-600">
+              <span className="font-medium">Trip length:</span>
+              <input
+                type="number"
+                value={effectiveMin}
+                onChange={(e) => setTripLengthMin(Math.max(1, parseInt(e.target.value) || 1))}
+                min={1}
+                max={effectiveMax}
+                className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs"
+              />
+              <span>to</span>
+              <input
+                type="number"
+                value={effectiveMax}
+                onChange={(e) => setTripLengthMax(Math.max(effectiveMin, parseInt(e.target.value) || effectiveMin))}
+                min={effectiveMin}
+                className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs"
+              />
+              <span>days</span>
+              {(tripLengthMin !== null || tripLengthMax !== null) && (
+                <button
+                  onClick={() => { setTripLengthMin(null); setTripLengthMax(null); }}
+                  className="text-blue-600 hover:text-blue-800 ml-1"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <span className="text-xs text-gray-400 ml-auto">
+              {filteredCombos.length} of {combos.length} combos
+            </span>
+          </div>
+
+          {filteredCombos.length === 0 ? (
             <div className="px-3 sm:px-6 py-8 text-sm text-gray-400 text-center">
-              No valid combos found yet. Combos appear as searches complete.
+              {combos.length === 0
+                ? 'No valid combos found yet. Combos appear as searches complete.'
+                : 'No combos match the trip length filter.'}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -167,7 +222,7 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
                   </tr>
                 </thead>
                 <tbody>
-                  {combos.slice(0, 50).map((combo, i) => (
+                  {filteredCombos.slice(0, 50).map((combo, i) => (
                     <tr key={i} className={`border-b border-gray-100 ${i === 0 ? 'bg-green-50' : 'hover:bg-gray-50'}`}>
                       <td className="px-4 py-2 text-gray-400">{i + 1}</td>
                       <td className="px-4 py-2 font-medium">{formatCurrency(combo.totalPrice)}</td>
@@ -196,72 +251,39 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
       {/* Outbound / Return tabs */}
       {(activeTab === 'outbound' || activeTab === 'return') && (
         <>
-          {/* Filters bar */}
-          <div className="px-3 sm:px-6 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 sm:gap-4 flex-wrap">
-            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={directOnly}
-                onChange={(e) => setDirectOnly(e.target.checked)}
-                className="rounded"
-              />
-              Direct only
-            </label>
+          {/* Shared filters */}
+          <FlightFilters
+            label={activeTab === 'outbound' ? 'Outbound filters' : 'Return filters'}
+            filters={currentFilters}
+            onChange={setCurrentFilters}
+            carriers={currentCarriers}
+          />
 
-            <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <span>Max duration:</span>
-              <select
-                value={maxDuration ?? ''}
-                onChange={(e) => setMaxDuration(e.target.value ? Number(e.target.value) : null)}
-                className="border border-gray-300 rounded px-1.5 py-0.5 text-xs"
-              >
-                <option value="">Any</option>
-                <option value="300">5h</option>
-                <option value="480">8h</option>
-                <option value="720">12h</option>
-                <option value="960">16h</option>
-                <option value="1440">24h</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <span>Carrier:</span>
-              <select
-                value={selectedCarrier ?? ''}
-                onChange={(e) => setSelectedCarrier(e.target.value || null)}
-                className="border border-gray-300 rounded px-1.5 py-0.5 text-xs"
-              >
-                <option value="">All</option>
-                {allCarriers.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            {selectedDate && (
+          {selectedDate && (
+            <div className="px-3 sm:px-6 py-1 bg-gray-50 border-b border-gray-200 flex items-center">
               <button
                 onClick={() => setSelectedDate(null)}
                 className="text-xs text-blue-600 hover:text-blue-800 ml-auto"
               >
-                Clear selection
+                Clear date selection
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Bar chart */}
           {chartData.length > 0 && (
-            <div className="px-3 sm:px-6 py-4 bg-white border-b border-gray-200" style={{ minHeight: 280 }}>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chartData}>
+            <div className="px-1 sm:px-6 py-2 sm:py-4 bg-white border-b border-gray-200" style={{ minHeight: 200 }}>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={chartData} margin={{ left: 0, right: 4, top: 4, bottom: 0 }}>
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11 }}
-                    interval={chartData.length > 14 ? Math.floor(chartData.length / 14) : 0}
-                    angle={chartData.length > 10 ? -45 : 0}
-                    textAnchor={chartData.length > 10 ? 'end' : 'middle'}
-                    height={chartData.length > 10 ? 60 : 30}
+                    tick={{ fontSize: 10 }}
+                    interval={chartData.length > 7 ? Math.floor(chartData.length / 7) : 0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={50}
                   />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip
                     formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Cheapest']}
                     labelFormatter={(label: React.ReactNode) => String(label)}
@@ -290,7 +312,7 @@ export function TimeSweepResults({ dayResults, combos, passengers }: TimeSweepRe
             </div>
           )}
 
-          {/* No results message */}
+          {/* No results */}
           {chartData.length > 0 && chartData.every((d) => d.price === null) && (
             <div className="px-3 sm:px-6 py-4 text-sm text-gray-500 text-center">
               No flights match the current filters

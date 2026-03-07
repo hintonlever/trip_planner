@@ -171,7 +171,62 @@ export function FlightResultsTable({ results, passengers, showCacheAge }: Flight
 
   return (
     <>
-      <div className="overflow-auto flex-1">
+      {/* Mobile card list */}
+      <div className="sm:hidden flex-1 overflow-auto divide-y divide-gray-100">
+        {sorted.map((r) => {
+          const arrOffset = dayOffset(r.departureAt, r.arrivalAt);
+          return (
+            <div
+              key={r.id}
+              className="px-3 py-3 active:bg-blue-50/40"
+              onClick={() => setSelectedFlight(r)}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  <span>{r.origin}</span>
+                  <ArrowRight className="w-3 h-3 text-gray-400" />
+                  <span>{r.destination}</span>
+                </div>
+                <span className="text-sm font-bold text-blue-700">{formatCurrency(r.totalPrice)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-gray-600">
+                <div>{formatDateShort(r.departureAt)}</div>
+                <div className="text-right">{r.airlineName}</div>
+                <div className="font-mono">
+                  {formatTime(r.departureAt)} → {formatTime(r.arrivalAt)}
+                  {arrOffset && <sup className="text-red-500 ml-0.5">{arrOffset}</sup>}
+                </div>
+                <div className="text-right">{formatDuration(r.duration)}</div>
+                <div>
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                    r.stops === 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {r.stops === 0 ? 'Direct' : `${r.stops} stop${r.stops > 1 ? 's' : ''}`}
+                  </span>
+                  {r.stopCodes.length > 0 && <span className="text-gray-400 ml-1">{r.stopCodes.join(',')}</span>}
+                </div>
+                <div className="text-right text-gray-400">{formatCurrency(r.pricePerPerson)}/pp</div>
+              </div>
+              {r.returnDepartureAt && (
+                <div className="grid grid-cols-2 gap-x-3 text-xs text-gray-400 mt-1 pt-1 border-t border-gray-50">
+                  <div>Ret: {formatDateShort(r.returnDepartureAt)}</div>
+                  <div className="text-right">{r.returnDuration ? formatDuration(r.returnDuration) : ''}</div>
+                </div>
+              )}
+              <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+                <AddToTripButton
+                  columnOrder={columnOrder}
+                  columns={columns}
+                  onSelect={(colId) => addFlight(r, colId)}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="overflow-auto flex-1 hidden sm:block">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50 sticky top-0">
             <tr>

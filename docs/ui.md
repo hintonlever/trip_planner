@@ -3,6 +3,7 @@
 - Switching pages should not clear any results, going to another page and back again should show the last query in there
 - All data is cached for now so that the user can be combine existing queries
 - Where possible auto fill in every UI field to make it easier to search with less clicks. For example dates could default to today + 1 and return to today + 8
+- Auto suggest dep and arr ports with most recently searched ones, add location name next to them as you type so it is easier to see we have the right one
 
 ## Generic Result Filters
 
