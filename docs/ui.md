@@ -8,11 +8,10 @@
 ## UI Layout
 
 App
-├── Flight Search
-│ ├── Route Search
-│ ├── Time Sweep
-│ ├── Scatter
-│ ├── Past Queries
+├── Route Search
+├── Time Sweep
+├── Scatter
+├── Past Queries
 
 ## Search Functionality
 

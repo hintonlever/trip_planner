@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ChevronUp, ChevronDown, Plus, X, ArrowRight, Plane } from 'lucide-react';
+import { ChevronUp, ChevronDown, X, ArrowRight, Plane } from 'lucide-react';
 import type { FlightSearchResult, FlightSegment, CacheSearchResult } from '../../types';
-import { useTripStore } from '../../store/useTripStore';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { parseDuration, formatDuration, formatMinutes } from '../../utils/flightUtils';
 
@@ -103,10 +102,6 @@ export function FlightResultsTable({ results, passengers, showCacheAge }: Flight
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selectedFlight, setSelectedFlight] = useState<FlightSearchResult | null>(null);
 
-  const columnOrder = useTripStore((s) => s.columnOrder);
-  const columns = useTripStore((s) => s.columns);
-  const addItem = useTripStore((s) => s.addItem);
-
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -127,37 +122,6 @@ export function FlightResultsTable({ results, passengers, showCacheAge }: Flight
     }
     return sortDir === 'asc' ? cmp : -cmp;
   });
-
-  const addFlight = (result: FlightSearchResult, columnId: string) => {
-    addItem(columnId, {
-      type: 'flight',
-      origin: result.origin,
-      destination: result.destination,
-      departureDate: result.departureAt.split('T')[0],
-      departureTime: result.departureAt,
-      arrivalTime: result.arrivalAt,
-      airlineName: result.airlineName,
-      airlineCode: result.airlineCode,
-      flightNumber: result.flightNumber,
-      duration: result.duration,
-      stops: result.stops,
-      stopCodes: result.stopCodes,
-      pricePerPerson: result.pricePerPerson,
-      passengers,
-      cabin: result.cabin,
-      totalCost: result.totalPrice,
-      currency: result.currency,
-      ...(result.returnDepartureAt && {
-        returnDate: result.returnDepartureAt.split('T')[0],
-        returnDepartureTime: result.returnDepartureAt,
-        returnArrivalTime: result.returnArrivalAt,
-        returnDuration: result.returnDuration,
-        returnStops: result.returnStops,
-        returnFlightNumber: result.returnFlightNumber,
-        returnStopCodes: result.returnStopCodes,
-      }),
-    });
-  };
 
   const SortIcon = ({ col }: { col: SortKey }) => {
     if (sortKey !== col) return <ChevronUp className="w-3 h-3 text-gray-300" />;
@@ -213,13 +177,6 @@ export function FlightResultsTable({ results, passengers, showCacheAge }: Flight
                   <div className="text-right">{r.returnDuration ? formatDuration(r.returnDuration) : ''}</div>
                 </div>
               )}
-              <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
-                <AddToTripButton
-                  columnOrder={columnOrder}
-                  columns={columns}
-                  onSelect={(colId) => addFlight(r, colId)}
-                />
-              </div>
             </div>
           );
         })}
@@ -251,7 +208,6 @@ export function FlightResultsTable({ results, passengers, showCacheAge }: Flight
                 <span className="flex items-center justify-end gap-1">Total <SortIcon col="totalPrice" /></span>
               </th>
               {showCacheAge && <th className={thStatic}>Cached</th>}
-              <th className={thStatic}>Add</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -386,14 +342,6 @@ export function FlightResultsTable({ results, passengers, showCacheAge }: Flight
                     </td>
                   )}
 
-                  {/* Add button */}
-                  <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <AddToTripButton
-                      columnOrder={columnOrder}
-                      columns={columns}
-                      onSelect={(colId) => addFlight(r, colId)}
-                    />
-                  </td>
                 </tr>
               );
             })}
@@ -409,46 +357,6 @@ export function FlightResultsTable({ results, passengers, showCacheAge }: Flight
         />
       )}
     </>
-  );
-}
-
-function AddToTripButton({ columnOrder, columns, onSelect }: {
-  columnOrder: string[];
-  columns: Record<string, { name: string }>;
-  onSelect: (colId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  if (columnOrder.length === 0) {
-    return <span className="text-xs text-gray-400">No destinations</span>;
-  }
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded hover:bg-blue-700 whitespace-nowrap"
-      >
-        <Plus className="w-3 h-3" />
-        Add to trip
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]">
-            {columnOrder.map((colId) => (
-              <button
-                key={colId}
-                onClick={() => { onSelect(colId); setOpen(false); }}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
-              >
-                {columns[colId]?.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
   );
 }
 
